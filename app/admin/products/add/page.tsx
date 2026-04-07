@@ -2,37 +2,54 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ProductService } from "@/lib/api/product-service";
+import {
+  Camera,
+  Trash2,
+  AlertCircle,
+  Image as ImageIcon,
+  CheckCircle2,
+  ChevronRight,
+} from "lucide-react";
 
 const PREDEFINED_MOODS = [
-  "Romantic",
-  "Energetic",
-  "Zen",
-  "Festive",
-  "Nostalgic",
-  "Productive",
-  "Adventurous",
+  "Serenity",
+  "Indulgence",
+  "Vitality",
+  "Melancholy Cure",
+  "Nostalgia",
+  "Deep Focus",
 ];
+
+// ── Inline error helper ──────────────────────────────────────────
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1.5 mt-1.5 ml-1 text-[10px] text-red-500 font-bold uppercase tracking-wider animate-in fade-in slide-in-from-top-1 duration-200">
+      <AlertCircle className="w-3 h-3 flex-shrink-0" />
+      {message}
+    </p>
+  );
+}
 
 export default function AddProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showMoods, setShowMoods] = useState(false);
-  const [isCustomMood, setIsCustomMood] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
   const [formData, setFormData] = useState({
     name: "",
     price: "",
     oldPrice: "",
     description: "",
-    calories: "420",
-    chefName: "Chef Julianne Moretti",
-    match: "95",
-    stock: "24",
-    experienceType: "Calm",
+    calories: "",
+    chefName: "",
+    match: "",
+    stock: "",
+    experienceType: "",
     tags: [] as string[],
-    currentTag: "",
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -47,33 +64,15 @@ export default function AddProductPage() {
     null,
     null,
   ]);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleGalleryChange = (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setGalleryImageFiles((prev) => {
-        const next = [...prev];
-        next[index] = file;
+  // Clear individual field error on change
+  const clearError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
         return next;
       });
-      const url = URL.createObjectURL(file);
-      setGalleryPreviews((prev) => {
-        const next = [...prev];
-        next[index] = url;
-        return next;
-      });
-    }
-  };
-
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMainImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -84,663 +83,657 @@ export default function AddProductPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    clearError(name);
   };
 
-  const handleAddField = (field: "tags", value: string) => {
-    if (value.trim() && !formData[field].includes(value.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        [field]: [...prev[field], value.trim()],
-        currentTag: "",
-      }));
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMainImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      clearError("mainImage");
     }
   };
 
-  const removeField = (field: "tags", valueToRemove: string) => {
+  const handleGalleryChange = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setGalleryImageFiles((prev) => {
+        const next = [...prev];
+        next[index] = file;
+        if (
+          next.filter((f) => f !== null).length === next.length &&
+          next.length < 5
+        )
+          next.push(null);
+        return next;
+      });
+      const url = URL.createObjectURL(file);
+      setGalleryPreviews((prev) => {
+        const next = [...prev];
+        next[index] = url;
+        if (
+          next.filter((p) => p !== null).length === next.length &&
+          next.length < 5
+        )
+          next.push(null);
+        return next;
+      });
+      clearError("gallery");
+    }
+  };
+
+  const toggleTag = (tag: string) => {
     setFormData((prev) => ({
       ...prev,
-      [field]: prev[field].filter((v) => v !== valueToRemove),
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter((t) => t !== tag)
+        : [...prev.tags, tag],
     }));
+    clearError("tags");
+  };
+
+  // ── Validation ───────────────────────────────────────────────────
+  const validate = (): Record<string, string> => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      errors.name = "Please enter a name for the confection.";
+    } else if (formData.name.trim().length < 3) {
+      errors.name = "Name must be at least 3 characters long.";
+    }
+
+    if (!formData.chefName) {
+      errors.chefName = "Please select the artisan chef responsible.";
+    }
+
+    if (!formData.experienceType) {
+      errors.experienceType =
+        "Please select an experience type for this product.";
+    }
+
+    if (!formData.description.trim()) {
+      errors.description =
+        "Please describe the sensory profile of this confection.";
+    } else if (formData.description.trim().length < 20) {
+      errors.description = "Description should be at least 20 characters.";
+    }
+
+    if (!formData.price) {
+      errors.price = "Price is required.";
+    } else if (
+      isNaN(parseFloat(formData.price)) ||
+      parseFloat(formData.price) <= 0
+    ) {
+      errors.price = "Please enter a valid price greater than $0.";
+    }
+
+    if (
+      formData.oldPrice &&
+      parseFloat(formData.oldPrice) <= parseFloat(formData.price)
+    ) {
+      errors.oldPrice = "Compare price must be higher than the base price.";
+    }
+
+    if (!formData.stock) {
+      errors.stock = "Stock quantity is required.";
+    } else if (parseInt(formData.stock) < 0) {
+      errors.stock = "Stock cannot be a negative number.";
+    }
+
+    if (!formData.calories) {
+      errors.calories = "Caloric value is required.";
+    } else if (parseInt(formData.calories) < 0) {
+      errors.calories = "Calories cannot be a negative number.";
+    }
+
+    if (
+      formData.match &&
+      (parseInt(formData.match) < 0 || parseInt(formData.match) > 100)
+    ) {
+      errors.match = "Match percentage must be between 0 and 100.";
+    }
+
+    if (formData.tags.length === 0) {
+      errors.tags =
+        "Select at least one emotional tone / mood for this confection.";
+    }
+
+    if (!imagePreview) {
+      errors.mainImage = "A hero image is required to publish this product.";
+    }
+
+    const filledGallery = galleryPreviews.filter((p) => p !== null).length;
+    if (filledGallery < 2) {
+      errors.gallery =
+        "Please upload at least 2 gallery images to showcase angles.";
+    }
+
+    return errors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setSubmitError("Please fix the errors below before publishing.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    setError(null);
-
-    // Basic validation
-    if (!formData.name.trim()) {
-      setError("Product Name is required.");
-      setLoading(false);
-      return;
-    }
-
-    const priceNum = parseFloat(formData.price);
-    if (isNaN(priceNum) || priceNum < 0) {
-      setError("Please enter a valid price.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // 1. Upload Main Image if exists
-      let mainImageUrl =
-        "https://images.unsplash.com/photo-1551024506-0bccd828d307?q=80&w=800";
-      if (mainImageFile) {
+      let mainImageUrl = imagePreview || "";
+      if (mainImageFile)
         mainImageUrl = await ProductService.uploadFile(mainImageFile);
-      }
 
-      // 2. Upload Gallery Images
       let galleryUrls: string[] = [];
-      const validGalleryFiles = galleryImageFiles.filter(
-        (f): f is File => f !== null,
-      );
-      if (validGalleryFiles.length > 0) {
-        galleryUrls = await ProductService.uploadGallery(validGalleryFiles);
-      }
+      const validFiles = galleryImageFiles.filter((f): f is File => f !== null);
+      if (validFiles.length > 0)
+        galleryUrls = await ProductService.uploadGallery(validFiles);
 
-      // Derive preferredMood from tags
-      const preferredMood =
-        formData.tags.find((t) => PREDEFINED_MOODS.includes(t)) ||
-        formData.tags[0];
-
-      const productData = {
+      await ProductService.create({
         name: formData.name,
-        price: priceNum,
+        price: parseFloat(formData.price),
         oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
         description: formData.description,
         calories: parseInt(formData.calories) || 0,
-        rating: 4.5,
-        reviews: 0,
+        stock: parseInt(formData.stock) || 0,
         match: parseInt(formData.match) || 95,
         chefName: formData.chefName,
         tags: formData.tags,
-        stock: parseInt(formData.stock) || 0,
         experienceType: formData.experienceType,
         imageUrl: mainImageUrl,
         gallery: galleryUrls,
-        preferredMood,
-      };
+        preferredMood: formData.tags[0] || "",
+        rating: 4.5,
+        reviews: 0,
+      });
 
-      await ProductService.create(productData);
       router.push("/admin/products");
-    } catch (error: any) {
-      console.error("Failed to create product:", error);
-      setError(error.message || "Something went wrong. Please try again.");
+    } catch (err: any) {
+      setSubmitError(err.message || "Something went wrong. Please try again.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen font-body pb-20">
-      {/* Page Header */}
-      <div className="py-12 flex items-end justify-between">
-        <div className="max-w-2xl">
-          <nav className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-widest">
-            <Link
-              href="/admin/products"
-              className="hover:text-primary transition-colors"
-            >
-              Products
-            </Link>
-            <span className="material-symbols-outlined text-[14px]">
-              chevron_right
-            </span>
-            <span className="text-secondary">Curate New Selection</span>
+    <div className="min-h-screen pb-20">
+      {/* ── Header ───────────────────────────────────────── */}
+      <header className="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div>
+          <nav className="flex items-center gap-2 text-[10px] text-stone-400 uppercase tracking-[0.2em] font-black mb-3">
+            <span>Menu Management</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-amber-600">Create Product</span>
           </nav>
-          <h1 className="text-4xl font-extrabold text-on-surface font-headline tracking-tight leading-tight">
-            Create a New <span className="text-primary italic">Signature</span>{" "}
-            Creation
+          <h1 className="text-3xl font-extrabold text-stone-900 font-headline">
+            New Confection
           </h1>
-          <p className="mt-3 text-on-surface-variant font-body leading-relaxed max-w-lg">
-            Define the soul of your next dessert. Use the fields below to
-            capture its ingredients, mood, and artisanal value.
-          </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
           <button
-            type="button"
             onClick={() => router.back()}
-            className="px-6 py-3 rounded-xl text-primary font-bold label-md border border-outline-variant/30 hover:bg-white transition-all active:scale-95"
+            className="px-8 py-3.5 rounded-xl text-stone-500 font-bold text-xs uppercase border border-stone-200 hover:bg-stone-50 transition-colors"
           >
-            DISCARD
+            Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-8 py-3 rounded-xl satin-gradient text-white font-bold label-md shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 uppercase tracking-widest flex items-center gap-2"
+            className="px-8 py-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase shadow-lg shadow-amber-600/10 flex items-center gap-2 disabled:opacity-60 transition-all active:scale-95"
           >
             {loading ? (
-              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            ) : null}
-            PUBLISH TO GALLERY
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            {loading ? "Publishing..." : "Publish Product"}
           </button>
         </div>
-      </div>
+      </header>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-12 gap-8 items-start"
-      >
-        {error && (
-          <div className="col-span-12 p-4 bg-error-container text-on-error-container rounded-xl border border-error/20 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-            <span className="material-symbols-outlined text-error">error</span>
-            <p className="text-sm font-bold uppercase tracking-wide">{error}</p>
+      {/* ── Global submission error banner ───────────────── */}
+      {submitError && (
+        <div className="mb-8 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide">
+              {submitError}
+            </p>
+            <p className="text-[10px] text-red-400 mt-0.5">
+              Scroll down to see all highlighted fields.
+            </p>
           </div>
-        )}
-        {/* Left Column: Primary Details */}
-        <div className="col-span-8 flex flex-col gap-8">
-          {/* Main Identity Card */}
-          <section className="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_10px_30px_rgba(43,22,19,0.02)]">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-8 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary"></span>
-              Product Essentials
-            </h3>
-            <div className="grid grid-cols-2 gap-8">
+        </div>
+      )}
+
+      <div className="grid grid-cols-12 gap-12 text-stone-900">
+        {/* ══ LEFT COLUMN ══════════════════════════════════════════ */}
+        <div className="col-span-12 lg:col-span-7 space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 delay-100">
+          {/* General Information */}
+          <section
+            className={cn(
+              "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
+              formErrors.name ||
+                formErrors.chefName ||
+                formErrors.experienceType ||
+                formErrors.description
+                ? "border-red-200"
+                : "border-stone-200",
+            )}
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-[1px] bg-amber-500/50" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
+                General Information
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {/* Name */}
               <div className="col-span-2">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Product Name
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Confection Name <span className="text-red-400">*</span>
                 </label>
                 <input
-                  required
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full bg-surface-container-low border-none rounded-lg px-4 py-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all text-lg font-medium"
-                  placeholder="e.g. Midnight Lavender Ganache Tart"
-                  type="text"
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 font-medium placeholder:text-stone-300 transition-colors focus:border-amber-500/40",
+                    formErrors.name
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="e.g. Lavender Infused Honey Meringue"
                 />
+                <FieldError message={formErrors.name} />
               </div>
+
+              {/* Chef */}
               <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Lead Chef
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Artisan Chef <span className="text-red-400">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    name="chefName"
-                    value={formData.chefName}
-                    onChange={handleInputChange}
-                    className="w-full bg-surface-container-low border-none rounded-lg px-4 py-4 text-on-surface focus:ring-2 focus:ring-primary/20 appearance-none transition-all"
-                  >
-                    <option>Chef Julianne Moretti</option>
-                    <option>Chef Marc-Antoine</option>
-                    <option>Chef Elena Rossi</option>
-                  </select>
-                  <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
-                    unfold_more
+                <select
+                  name="chefName"
+                  value={formData.chefName}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40 appearance-none cursor-pointer",
+                    formErrors.chefName
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                >
+                  <option value="">— Select Chef —</option>
+                  <option>Executive Chef Liz</option>
+                  <option>Chef Marc-Antoine</option>
+                  <option>Chef Sofia Rossi</option>
+                </select>
+                <FieldError message={formErrors.chefName} />
+              </div>
+
+              {/* Experience Type */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Experience Type <span className="text-red-400">*</span>
+                </label>
+                <select
+                  name="experienceType"
+                  value={formData.experienceType}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40 appearance-none cursor-pointer",
+                    formErrors.experienceType
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                >
+                  <option value="">— Select Type —</option>
+                  <option>In-Studio Ritual</option>
+                  <option>Gifting Collection</option>
+                  <option>Seasonal Flight</option>
+                </select>
+                <FieldError message={formErrors.experienceType} />
+              </div>
+
+              {/* Description */}
+              <div className="col-span-2">
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Sensory Description <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 font-medium leading-relaxed placeholder:text-stone-300 transition-colors focus:border-amber-500/40 resize-none",
+                    formErrors.description
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="Describe the texture, aromatic notes, and emotional journey…"
+                  rows={5}
+                />
+                <div className="flex items-start justify-between mt-1">
+                  <FieldError message={formErrors.description} />
+                  <span className="text-[9px] text-stone-300 font-bold ml-auto">
+                    {formData.description.length} chars
                   </span>
                 </div>
               </div>
+            </div>
+          </section>
+
+          {/* Pricing & Inventory */}
+          <section
+            className={cn(
+              "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
+              formErrors.price ||
+                formErrors.oldPrice ||
+                formErrors.stock ||
+                formErrors.calories ||
+                formErrors.match
+                ? "border-red-200"
+                : "border-stone-200",
+            )}
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-[1px] bg-amber-500/50" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
+                Pricing & Inventory
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {/* Base Price */}
               <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  Artisanal Stock
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Base Price ($) <span className="text-red-400">*</span>
+                </label>
+                <input
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
+                    formErrors.price
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="0.00"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                />
+                <FieldError message={formErrors.price} />
+              </div>
+
+              {/* Compare Price */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Compare At ($)
+                </label>
+                <input
+                  name="oldPrice"
+                  value={formData.oldPrice}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
+                    formErrors.oldPrice
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="0.00"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                />
+                <FieldError message={formErrors.oldPrice} />
+              </div>
+
+              {/* Stock */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Stock Count <span className="text-red-400">*</span>
                 </label>
                 <input
                   name="stock"
                   value={formData.stock}
                   onChange={handleInputChange}
-                  className="w-full bg-surface-container-low border-none rounded-lg px-4 py-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all"
-                  placeholder="24"
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
+                    formErrors.stock
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="0"
                   type="number"
+                  min="0"
                 />
+                <FieldError message={formErrors.stock} />
               </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                  The Narrative (Description)
+
+              {/* Calories */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Calories (Kcal) <span className="text-red-400">*</span>
                 </label>
-                <textarea
-                  required
-                  name="description"
-                  value={formData.description}
+                <input
+                  name="calories"
+                  value={formData.calories}
                   onChange={handleInputChange}
-                  className="w-full bg-surface-container-low border-none rounded-lg px-4 py-4 text-on-surface focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                  placeholder="Describe the flavor journey, the textures, and the secret behind the creation..."
-                  rows={4}
-                ></textarea>
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
+                    formErrors.calories
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="0"
+                  type="number"
+                  min="0"
+                />
+                <FieldError message={formErrors.calories} />
+              </div>
+
+              {/* Match % */}
+              <div className="col-span-2">
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Mood Match %{" "}
+                  <span className="text-stone-300 font-normal">(optional)</span>
+                </label>
+                <input
+                  name="match"
+                  value={formData.match}
+                  onChange={handleInputChange}
+                  className={cn(
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
+                    formErrors.match
+                      ? "border-red-400 bg-red-50/30"
+                      : "border-stone-200",
+                  )}
+                  placeholder="95"
+                  type="number"
+                  min="0"
+                  max="100"
+                />
+                <FieldError message={formErrors.match} />
               </div>
             </div>
           </section>
-
-          {/* Pricing & Nutrition Bento Row */}
-          <div className="grid grid-cols-2 gap-8">
-            {/* Pricing Card */}
-            <section className="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_10px_30px_rgba(43,22,19,0.02)]">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-8 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                Commercial Value
-              </h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                    Base Price (USD)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-primary">
-                      $
-                    </span>
-                    <input
-                      required
-                      name="price"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      className="w-full bg-surface-container-low border-none rounded-lg pl-8 py-4 text-on-surface font-bold focus:ring-2 focus:ring-primary/20 transition-all"
-                      placeholder="0.00"
-                      type="text"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">
-                    Compare Price (Discounted)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-on-surface-variant/40">
-                      $
-                    </span>
-                    <input
-                      name="oldPrice"
-                      value={formData.oldPrice}
-                      onChange={handleInputChange}
-                      className="w-full bg-surface-container-low border-none rounded-lg pl-8 py-4 text-on-surface/40 font-bold focus:ring-2 focus:ring-primary/20 transition-all"
-                      placeholder="0.00"
-                      type="text"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Nutrition Card */}
-            <section className="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_10px_30px_rgba(43,22,19,0.02)]">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-8 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-tertiary"></span>
-                Nutritional Balance
-              </h3>
-              <div className="space-y-8">
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                      Energy Density (kcal)
-                    </label>
-                    <span className="text-primary font-bold">
-                      {formData.calories}{" "}
-                      <small className="text-xs font-normal">kcal</small>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all duration-1000"
-                      style={{
-                        width: `${Math.min(parseInt(formData.calories) / 10, 100)}%`,
-                      }}
-                    ></div>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1000"
-                    name="calories"
-                    value={formData.calories}
-                    onChange={handleInputChange}
-                    className="w-full h-1 mt-4 accent-primary"
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
         </div>
 
-        {/* Right Column: Curated Attributes */}
-        <div className="col-span-4 flex flex-col gap-8">
-          {/* Mood & Type Card */}
-          <section className="bg-surface-container-low rounded-xl p-8 border-2 border-dashed border-outline-variant/30 relative">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-primary/5 blur-3xl"></div>
-            <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-8 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-xl">
-                temp_preferences_custom
-              </span>
-              Experience Curating
-            </h3>
-            <div className="space-y-8 relative z-10">
-              <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">
-                  Flavor Experience Type
-                </label>
-                <div className="grid grid-cols-1 gap-3">
-                  {[
-                    {
-                      id: "Calm",
-                      icon: "spa",
-                      desc: "Smooth, floral, low-sugar",
-                      color: "bg-tertiary-fixed text-on-tertiary-fixed",
-                    },
-                    {
-                      id: "Light",
-                      icon: "air",
-                      desc: "Crisp, citrus, airy texture",
-                      color: "bg-secondary-fixed text-on-secondary-fixed",
-                    },
-                    {
-                      id: "Comfort",
-                      icon: "volcano",
-                      desc: "Rich, warm, heavy ganache",
-                      color: "bg-primary-fixed text-on-primary-fixed",
-                    },
-                  ].map((type) => (
-                    <label
-                      key={type.id}
-                      className={cn(
-                        "flex items-center gap-4 p-4 rounded-xl bg-white cursor-pointer border-2 transition-all group",
-                        formData.experienceType === type.id
-                          ? "border-primary bg-primary-fixed/30"
-                          : "border-transparent hover:border-primary/20",
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="experienceType"
-                        value={type.id}
-                        checked={formData.experienceType === type.id}
-                        onChange={handleInputChange}
-                        className="hidden"
-                      />
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
-                          type.color,
-                        )}
-                      >
-                        <span className="material-symbols-outlined">
-                          {type.icon}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-on-surface">
-                          {type.id}
-                        </span>
-                        <span className="text-[10px] text-on-surface-variant">
-                          {type.desc}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="relative">
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[14px]">
-                    psychology
-                  </span>
-                  Mood Match
-                </label>
-                <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-outline-variant/10 shadow-inner group-focus-within:border-primary/20 transition-all transition-all">
-                  <div className="flex flex-wrap gap-2.5 mb-5 min-h-[32px]">
-                    {formData.tags.length > 0 ? (
-                      formData.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-4 py-1.5 bg-[#fcf9f4] border border-primary/10 text-primary text-[11px] font-bold rounded-xl flex items-center gap-2 uppercase tracking-wide shadow-sm animate-in fade-in zoom-in duration-300"
-                        >
-                          {tag}{" "}
-                          <button
-                            type="button"
-                            onClick={() => removeField("tags", tag)}
-                            className="material-symbols-outlined text-[14px] hover:text-[#E91E63] transition-colors"
-                          >
-                            close
-                          </button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[10px] text-on-surface-variant/40 italic">
-                        No moods selected yet...
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <input
-                      autoComplete="off"
-                      className="w-full text-sm border-none focus:ring-0 p-0 text-on-surface placeholder:text-on-surface-variant/30 outline-none bg-transparent font-semibold"
-                      placeholder={
-                        isCustomMood
-                          ? "Describe the custom mood..."
-                          : "Select palettes or start typing..."
-                      }
-                      type="text"
-                      name="currentTag"
-                      value={formData.currentTag}
-                      onChange={(e) => {
-                        handleInputChange(e);
-                        setShowMoods(true);
-                      }}
-                      onFocus={() => {
-                        setShowMoods(true);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (formData.currentTag.trim()) {
-                            handleAddField("tags", formData.currentTag);
-                            setIsCustomMood(false);
-                          }
-                        }
-                      }}
-                    />
-
-                    {/* Realistic Mood Dropdown - Always accessible */}
-                    {showMoods && (
-                      <div className="absolute left-0 top-full mt-3 w-full bg-white rounded-2xl shadow-premium border border-outline-variant/10 z-50 py-3 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="px-5 py-2 flex items-center justify-between border-b border-outline-variant/5 mb-2">
-                          <p className="text-[10px] uppercase font-bold text-on-surface-variant/40 tracking-[0.2em]">
-                            {isCustomMood
-                              ? "Custom Entry Mode"
-                              : "Select Palette"}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (isCustomMood) {
-                                setIsCustomMood(false);
-                                setFormData((p) => ({ ...p, currentTag: "" }));
-                              } else {
-                                setFormData((p) => ({ ...p, currentTag: "" }));
-                              }
-                            }}
-                            className="text-[10px] text-primary font-bold hover:underline"
-                          >
-                            {isCustomMood ? "Back to List" : "Clear"}
-                          </button>
-                        </div>
-
-                        {!isCustomMood ? (
-                          <div className="max-h-56 overflow-y-auto custom-scrollbar">
-                            {PREDEFINED_MOODS.filter(
-                              (m) => !formData.tags.includes(m),
-                            )
-                              .filter((m) =>
-                                m
-                                  .toLowerCase()
-                                  .includes(formData.currentTag.toLowerCase()),
-                              )
-                              .map((mood) => (
-                                <button
-                                  key={mood}
-                                  type="button"
-                                  onClick={() => {
-                                    handleAddField("tags", mood);
-                                    setShowMoods(false);
-                                    setIsCustomMood(false);
-                                  }}
-                                  className="w-full text-left px-5 py-3 text-[13px] hover:bg-primary/5 transition-all font-semibold text-on-surface flex items-center justify-between group/item"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <span className="w-2 h-2 rounded-full border-2 border-primary/20 group-hover/item:border-primary/60 transition-all"></span>
-                                    {mood}
-                                  </div>
-                                  <span className="material-symbols-outlined opacity-0 group-hover/item:opacity-100 text-primary text-sm transition-all">
-                                    add_circle
-                                  </span>
-                                </button>
-                              ))}
-
-                            {PREDEFINED_MOODS.filter(
-                              (m) =>
-                                !formData.tags.includes(m) &&
-                                m
-                                  .toLowerCase()
-                                  .includes(formData.currentTag.toLowerCase()),
-                            ).length === 0 && (
-                              <div className="px-5 py-4 text-center">
-                                <p className="text-[11px] text-on-surface-variant italic mb-2">
-                                  No matching palette found
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsCustomMood(true);
-                                  }}
-                                  className="text-xs font-bold text-primary px-4 py-2 bg-primary/5 rounded-lg hover:bg-primary/10 transition-all"
-                                >
-                                  DESCRIBE CUSTOM MOOD
-                                </button>
-                              </div>
-                            )}
-
-                            <div className="mt-2 px-3 pt-2 border-t border-outline-variant/10">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsCustomMood(true);
-                                  const inputs =
-                                    document.getElementsByName("currentTag");
-                                  if (inputs[0])
-                                    (inputs[0] as HTMLInputElement).focus();
-                                }}
-                                className="w-full text-left px-4 py-3 text-[12px] bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-xl transition-all font-bold uppercase tracking-wider flex items-center justify-between shadow-sm group/custom"
-                              >
-                                Other / Custom
-                                <span className="material-symbols-outlined text-[16px] group-hover/custom:rotate-12 transition-transform">
-                                  edit_note
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="px-5 py-6 text-center animate-in fade-in zoom-in duration-300">
-                            <span className="material-symbols-outlined text-primary text-3xl mb-3">
-                              edit_note
-                            </span>
-                            <p className="text-[13px] font-semibold text-on-surface mb-1">
-                              Editing Custom Mood
-                            </p>
-                            <p className="text-[11px] text-on-surface-variant/70 mb-4 px-4 leading-relaxed">
-                              Type your creation's mood above and press{" "}
-                              <span className="font-bold text-primary italic">
-                                Enter
-                              </span>{" "}
-                              to add it to the palette.
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setIsCustomMood(false)}
-                              className="px-6 py-2 border border-primary text-primary hover:bg-primary/5 text-[11px] font-bold rounded-full transition-all uppercase tracking-widest"
-                            >
-                              Back to Selection
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Quick Backdrop to close dropdown */}
-                    {showMoods && (
-                      <div
-                        className="fixed inset-0 z-40 bg-transparent"
-                        onClick={() => setShowMoods(false)}
-                      ></div>
-                    )}
-                  </div>
-                </div>
-              </div>
+        {/* ══ RIGHT COLUMN ═════════════════════════════════════════ */}
+        <div className="col-span-12 lg:col-span-5 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 delay-200">
+          {/* Imagery */}
+          <section
+            className={cn(
+              "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
+              formErrors.mainImage || formErrors.gallery
+                ? "border-red-200"
+                : "border-stone-200",
+            )}
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-[1px] bg-amber-500/50" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
+                Imagery
+              </h3>
             </div>
-          </section>
-
-          {/* Media Upload */}
-          <section className="bg-surface-container-lowest rounded-xl p-8 shadow-[0px_10px_30px_rgba(43,22,19,0.02)]">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-xl">
-                camera
-              </span>
-              Visual Presentation
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-3 aspect-[16/9] rounded-xl bg-surface-container-low border-2 border-dashed border-outline-variant/40 flex flex-col items-center justify-center gap-2 group cursor-pointer hover:bg-surface-container transition-all relative overflow-hidden">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    className="w-full h-full object-cover"
-                    alt="Preview"
-                  />
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-on-surface-variant group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-2xl">
-                        add_a_photo
-                      </span>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                        Upload Main Image
-                      </p>
-                      <p className="text-[9px] text-on-surface-variant mt-0.5 opacity-70">
-                        Hero shot for the gallery
-                      </p>
-                    </div>
-                  </>
-                )}
-                <input
-                  type="file"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  onChange={handleMainImageChange}
-                />
-              </div>
-              {galleryPreviews.map((preview, i) => (
+            <div className="space-y-6">
+              {/* Hero Image */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Hero Image <span className="text-red-400">*</span>
+                </label>
                 <div
-                  key={i}
-                  className="aspect-square rounded-xl bg-surface-container-low border-2 border-dashed border-outline-variant/40 flex flex-col items-center justify-center gap-1 group cursor-pointer hover:bg-surface-container transition-all relative overflow-hidden"
+                  className={cn(
+                    "relative group aspect-video rounded-xl overflow-hidden bg-stone-50 border transition-colors",
+                    formErrors.mainImage
+                      ? "border-red-400 ring-1 ring-red-200"
+                      : "border-stone-200 hover:border-amber-400/40",
+                  )}
                 >
-                  {preview ? (
+                  {imagePreview ? (
                     <img
-                      src={preview}
-                      className="w-full h-full object-cover"
-                      alt={`Gallery ${i}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      src={imagePreview}
+                      alt="Hero preview"
                     />
                   ) : (
-                    <>
-                      <div className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center text-on-surface-variant group-hover:scale-110 transition-transform">
-                        <span className="material-symbols-outlined text-xl">
-                          add
-                        </span>
-                      </div>
-                      <p className="text-[10px] font-bold text-on-surface-variant/80">
-                        {i === 0 ? "Angle 1" : i === 1 ? "Angle 2" : "Detail"}
-                      </p>
-                    </>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-stone-300 gap-3">
+                      <Camera className="w-10 h-10 stroke-[1.5]" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        Click to upload hero image
+                      </span>
+                    </div>
                   )}
+                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
+                    <Camera className="text-white w-8 h-8" />
+                  </div>
                   <input
                     type="file"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={(e) => handleGalleryChange(i, e)}
+                    onChange={handleMainImageChange}
+                    accept="image/*"
                   />
                 </div>
+                <FieldError message={formErrors.mainImage} />
+              </div>
+
+              {/* Gallery Grid */}
+              <div>
+                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
+                  Gallery Images <span className="text-red-400">*</span>{" "}
+                  <span className="text-stone-300 font-normal normal-case">
+                    (min 2)
+                  </span>
+                </label>
+                <div className="grid grid-cols-5 gap-3">
+                  {galleryPreviews.map((preview, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "aspect-square rounded-xl bg-stone-50 border overflow-hidden relative group",
+                        formErrors.gallery && !preview
+                          ? "border-red-300"
+                          : "border-stone-200",
+                      )}
+                    >
+                      {preview ? (
+                        <>
+                          <img
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            src={preview}
+                            alt={`Gallery ${i + 1}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGalleryPreviews((prev) => {
+                                const next = prev.filter((_, idx) => idx !== i);
+                                while (next.length < 3) next.push(null);
+                                return next;
+                              });
+                              setGalleryImageFiles((prev) => {
+                                const next = prev.filter((_, idx) => idx !== i);
+                                while (next.length < 3) next.push(null);
+                                return next;
+                              });
+                            }}
+                            className="absolute inset-0 bg-red-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-200 gap-1">
+                          <ImageIcon className="w-5 h-5" />
+                          <span className="text-[7px] font-black uppercase text-stone-300">
+                            {i + 1}
+                          </span>
+                          <input
+                            type="file"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => handleGalleryChange(i, e)}
+                            accept="image/*"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <FieldError message={formErrors.gallery} />
+              </div>
+            </div>
+          </section>
+
+          {/* Emotional Tones */}
+          <section
+            className={cn(
+              "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
+              formErrors.tags ? "border-red-200" : "border-stone-200",
+            )}
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-[1px] bg-amber-500/50" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
+                Emotional Tones <span className="text-red-400">*</span>
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {PREDEFINED_MOODS.map((mood) => (
+                <button
+                  key={mood}
+                  type="button"
+                  onClick={() => toggleTag(mood)}
+                  className={cn(
+                    "px-4 py-2 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95",
+                    formData.tags.includes(mood)
+                      ? "border-amber-500 bg-amber-50 text-amber-600 shadow-sm"
+                      : "border-stone-200 text-stone-400 hover:border-stone-300 hover:text-stone-600",
+                  )}
+                >
+                  {mood}
+                </button>
               ))}
             </div>
-            <p className="text-[10px] text-on-surface-variant/60 mt-4 text-center italic">
-              Accepted formats: PNG, JPG (Max 10MB per image)
-            </p>
+            {formData.tags.length > 0 && (
+              <p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest mt-3 ml-1">
+                {formData.tags.length} mood{formData.tags.length > 1 ? "s" : ""}{" "}
+                selected
+              </p>
+            )}
+            <FieldError message={formErrors.tags} />
           </section>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

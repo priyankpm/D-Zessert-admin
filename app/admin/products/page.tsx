@@ -6,6 +6,15 @@ import Link from "next/link";
 import { ProductCard } from "@/components/admin/ProductCard";
 import { ProductService, Product } from "@/lib/api/product-service";
 import { cn } from "@/lib/utils";
+import { 
+  Plus, 
+  ChevronDown, 
+  SlidersHorizontal, 
+  AlertCircle, 
+  ChevronLeft, 
+  ChevronRight,
+  ArrowUpDown
+} from "lucide-react";
 
 function ProductsPageContent() {
   const router = useRouter();
@@ -33,8 +42,6 @@ function ProductsPageContent() {
       try {
         setIsLoading(true);
         const data = await ProductService.findAll();
-
-        console.log("data", data);
         setProducts(data);
       } catch (error) {
         console.error("Failed to load products:", error);
@@ -51,7 +58,6 @@ function ProductsPageContent() {
       return;
     try {
       await ProductService.remove(id);
-      // Soft delete: keep the product but mark it as deleted
       setProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === id ? { ...p, isDeleted: true } : p)),
       );
@@ -62,7 +68,6 @@ function ProductsPageContent() {
 
   const handleRestore = async (id: string) => {
     try {
-      // Assuming update can handle isDeleted: false
       await ProductService.update(id, { isDeleted: false });
       setProducts((prevProducts) =>
         prevProducts.map((p) => (p.id === id ? { ...p, isDeleted: false } : p)),
@@ -75,7 +80,6 @@ function ProductsPageContent() {
   // Filtering & Sorting Logic
   const filteredProducts = products
     .filter((product) => {
-      // Category Tab Filter (using tags)
       if (category !== "All Masterpieces") {
         const matchesCategory = product.tags?.some(
           (tag) => tag.toLowerCase() === category.toLowerCase(),
@@ -83,7 +87,6 @@ function ProductsPageContent() {
         if (!matchesCategory) return false;
       }
 
-      // Refine/Collection Filter (simplified matching for demo)
       if (refine !== "All Collections") {
         const matchesCollection = product.tags?.some(
           (tag) => tag.toLowerCase() === refine.toLowerCase(),
@@ -91,7 +94,6 @@ function ProductsPageContent() {
         if (!matchesCollection) return false;
       }
 
-      // Price Range Filter
       if (priceRange !== "Any Price") {
         if (priceRange === "Under $10" && product.price >= 10) return false;
         if (
@@ -102,7 +104,6 @@ function ProductsPageContent() {
         if (priceRange === "$50+" && product.price <= 50) return false;
       }
 
-      // Stock Status Filter
       if (stockStatus !== "All Inventory") {
         if (stockStatus === "In Stock" && product.isActive === false)
           return false;
@@ -110,7 +111,6 @@ function ProductsPageContent() {
           return false;
       }
 
-      // Search Query Filter
       if (
         searchQuery &&
         !product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -131,28 +131,26 @@ function ProductsPageContent() {
       if (sortBy === "Top Rated") return (b.rating || 0) - (a.rating || 0);
       return 0;
     });
-  console.log("filteredProducts", filteredProducts);
+
   return (
     <div className="min-h-screen">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
         <div>
-          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">
+          <h2 className="text-4xl font-extrabold font-headline tracking-tight text-stone-900 mb-2">
             Product Gallery
           </h2>
-          <p className="text-on-surface-variant font-body flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-tertiary"></span>
+          <p className="text-stone-500 font-body flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
             Displaying {filteredProducts.length} artisanal masterpieces
             currently in stock
           </p>
         </div>
         <Link
           href="/admin/products/add"
-          className="satin-gradient text-white px-6 py-3.5 rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 group w-fit"
+          className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3.5 rounded-xl flex items-center gap-2 shadow-lg shadow-amber-600/10 hover:shadow-amber-600/20 transition-all active:scale-95 group w-fit"
         >
-          <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">
-            add
-          </span>
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
           <span className="font-headline font-bold text-sm tracking-wider uppercase">
             Add New Product
           </span>
@@ -162,7 +160,7 @@ function ProductsPageContent() {
       {/* Filters & Tabs Section */}
       <div className="flex flex-col gap-8 mb-10">
         {/* Category Tabs */}
-        <div className="flex items-center gap-8 border-b border-outline-variant/10 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-8 border-b border-stone-200 overflow-x-auto custom-scrollbar">
           {["All Products"].map((tab) => (
             <button
               key={tab}
@@ -170,8 +168,8 @@ function ProductsPageContent() {
               className={cn(
                 "pb-4 text-sm font-bold uppercase tracking-widest transition-all relative whitespace-nowrap",
                 category === tab
-                  ? "text-primary after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-1 after:bg-primary after:rounded-t-full"
-                  : "text-on-surface-variant hover:text-primary",
+                  ? "text-amber-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-1 after:bg-amber-600 after:rounded-t-full"
+                  : "text-stone-400 hover:text-amber-600",
               )}
             >
               {tab}
@@ -182,25 +180,23 @@ function ProductsPageContent() {
         {/* Filters Bento */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Refine Dropdown */}
-          <div className="relative">
+          <div className="relative group">
             <div
               onClick={() =>
                 setActiveDropdown(activeDropdown === "refine" ? null : "refine")
               }
-              className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"
+              className="bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer border border-stone-200 hover:border-amber-500/30 transition-all shadow-sm"
             >
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
                   Refine
                 </p>
-                <p className="font-headline font-bold text-primary">{refine}</p>
+                <p className="font-headline font-bold text-amber-700 text-sm">{refine}</p>
               </div>
-              <span className="material-symbols-outlined text-outline">
-                expand_more
-              </span>
+              <ChevronDown className="w-4 h-4 text-stone-400" />
             </div>
             {activeDropdown === "refine" && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl z-50 py-2 border border-outline-variant/10">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 py-2 border border-stone-200">
                 {["All Collections", "Summer", "Signature", "Gift Boxes"].map(
                   (opt) => (
                     <button
@@ -209,7 +205,7 @@ function ProductsPageContent() {
                         setRefine(opt);
                         setActiveDropdown(null);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low font-medium"
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 font-bold text-stone-600 hover:text-amber-600 transition-colors"
                     >
                       {opt}
                     </button>
@@ -220,27 +216,25 @@ function ProductsPageContent() {
           </div>
 
           {/* Price Range Dropdown */}
-          <div className="relative">
+          <div className="relative group">
             <div
               onClick={() =>
                 setActiveDropdown(activeDropdown === "price" ? null : "price")
               }
-              className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"
+              className="bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer border border-stone-200 hover:border-amber-500/30 transition-all shadow-sm"
             >
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
                   Price Range
                 </p>
-                <p className="font-headline font-bold text-primary">
+                <p className="font-headline font-bold text-amber-700 text-sm">
                   {priceRange}
                 </p>
               </div>
-              <span className="material-symbols-outlined text-outline">
-                tune
-              </span>
+              <SlidersHorizontal className="w-4 h-4 text-stone-400" />
             </div>
             {activeDropdown === "price" && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl z-50 py-2 border border-outline-variant/10">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 py-2 border border-stone-200">
                 {["Any Price", "Under $10", "$10 - $50", "$50+"].map((opt) => (
                   <button
                     key={opt}
@@ -248,7 +242,7 @@ function ProductsPageContent() {
                       setPriceRange(opt);
                       setActiveDropdown(null);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low font-medium"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 font-bold text-stone-600 hover:text-amber-600 transition-colors"
                   >
                     {opt}
                   </button>
@@ -258,27 +252,25 @@ function ProductsPageContent() {
           </div>
 
           {/* Stock Status Dropdown */}
-          <div className="relative">
+          <div className="relative group">
             <div
               onClick={() =>
                 setActiveDropdown(activeDropdown === "stock" ? null : "stock")
               }
-              className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"
+              className="bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer border border-stone-200 hover:border-amber-500/30 transition-all shadow-sm"
             >
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
                   Stock Status
                 </p>
-                <p className="font-headline font-bold text-primary">
+                <p className="font-headline font-bold text-amber-700 text-sm">
                   {stockStatus}
                 </p>
               </div>
-              <span className="material-symbols-outlined text-outline">
-                warning
-              </span>
+              <AlertCircle className="w-4 h-4 text-stone-400" />
             </div>
             {activeDropdown === "stock" && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl z-50 py-2 border border-outline-variant/10">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 py-2 border border-stone-200">
                 {["All Inventory", "In Stock", "Out of Stock"].map((opt) => (
                   <button
                     key={opt}
@@ -286,7 +278,7 @@ function ProductsPageContent() {
                       setStockStatus(opt);
                       setActiveDropdown(null);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low font-medium"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 font-bold text-stone-600 hover:text-amber-600 transition-colors"
                   >
                     {opt}
                   </button>
@@ -296,25 +288,23 @@ function ProductsPageContent() {
           </div>
 
           {/* Sort By Dropdown */}
-          <div className="relative">
+          <div className="relative group">
             <div
               onClick={() =>
                 setActiveDropdown(activeDropdown === "sort" ? null : "sort")
               }
-              className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"
+              className="bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer border border-stone-200 hover:border-amber-500/30 transition-all shadow-sm"
             >
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
                   Sort By
                 </p>
-                <p className="font-headline font-bold text-primary">{sortBy}</p>
+                <p className="font-headline font-bold text-amber-700 text-sm">{sortBy}</p>
               </div>
-              <span className="material-symbols-outlined text-outline">
-                sort
-              </span>
+              <ArrowUpDown className="w-4 h-4 text-stone-400" />
             </div>
             {activeDropdown === "sort" && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-2xl z-50 py-2 border border-outline-variant/10">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 py-2 border border-stone-200">
                 {[
                   "Newest First",
                   "Price: Low to High",
@@ -327,7 +317,7 @@ function ProductsPageContent() {
                       setSortBy(opt);
                       setActiveDropdown(null);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-surface-container-low font-medium"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 font-bold text-stone-600 hover:text-amber-600 transition-colors"
                   >
                     {opt}
                   </button>
@@ -341,7 +331,7 @@ function ProductsPageContent() {
       {/* Product Cards Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center p-20">
-          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
         </div>
       ) : filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
@@ -359,8 +349,8 @@ function ProductsPageContent() {
           ))}
         </div>
       ) : (
-        <div className="bg-surface-container-low p-20 rounded-3xl text-center space-y-4">
-          <p className="text-on-surface-variant font-bold text-xl uppercase tracking-widest">
+        <div className="bg-white p-20 rounded-3xl text-center space-y-4 border border-stone-200 shadow-sm">
+          <p className="text-stone-400 font-bold text-xl uppercase tracking-widest">
             No delicacies match your selection.
           </p>
           <button
@@ -369,37 +359,33 @@ function ProductsPageContent() {
               setRefine("All Collections");
               setPriceRange("Any Price");
               setStockStatus("All Inventory");
-              setSearchQuery("");
+              setActiveDropdown(null);
             }}
-            className="text-primary font-black hover:underline underline-offset-4 decoration-2"
+            className="text-amber-600 font-black hover:underline underline-offset-4 decoration-2"
           >
             Clear all filters
           </button>
         </div>
       )}
 
-      {/* Table Footer/Pagination */}
-      <div className="px-6 py-8 flex items-center justify-between border-t border-outline-variant/10">
-        <p className="text-xs font-medium text-on-surface-variant font-body">
+      {/* Pagination */}
+      <div className="px-6 py-8 flex items-center justify-between border-t border-stone-200">
+        <p className="text-xs font-medium text-stone-400 font-body">
           Showing 1 - {filteredProducts.length} of {filteredProducts.length}{" "}
           artisanal products
         </p>
         <div className="flex items-center gap-2">
           <button
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high disabled:opacity-30"
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-stone-100 disabled:opacity-30"
             disabled
           >
-            <span className="material-symbols-outlined text-sm">
-              chevron_left
-            </span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold font-headline shadow-md">
+          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-600 text-white text-xs font-bold font-headline shadow-md">
             1
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high">
-            <span className="material-symbols-outlined text-sm">
-              chevron_right
-            </span>
+          <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-stone-100">
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -410,7 +396,7 @@ function ProductsPageContent() {
 export default function ProductsPage() {
   return (
     <Suspense
-      fallback={<div className="p-20 text-center">Loading Gallery...</div>}
+      fallback={<div className="p-20 text-center text-stone-400 font-bold uppercase tracking-widest">Loading Gallery...</div>}
     >
       <ProductsPageContent />
     </Suspense>

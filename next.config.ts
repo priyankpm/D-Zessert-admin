@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'dzessert.sfo3.digitaloceanspaces.com',
+        hostname: 'dzessert-photo.sfo3.digitaloceanspaces.com',
         port: '',
         pathname: '/**',
       },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter, Newsreader, Manrope } from "next/font/google";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -12,8 +12,19 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+});
+
 export const metadata: Metadata = {
-  title: "d'zessert - Products Gallery",
+  title: "D'Zessert Admin | Boutique Confectionery",
   description: "Modern admin dashboard for managing gourmet desserts and sweet treats.",
 };
 
@@ -25,12 +36,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakartaSans.variable} ${inter.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${inter.variable} ${newsreader.variable} ${manrope.variable} h-full antialiased`}
     >
-      <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-      </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-surface text-on-surface">{children}</body>
     </html>
   );
 }

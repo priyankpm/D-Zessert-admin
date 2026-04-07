@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { MoreVertical } from "lucide-react";
 
 interface ProductCardProps {
   id: string;
@@ -50,11 +51,12 @@ export function ProductCard({
     <div
       onClick={() => onView?.(id)}
       className={cn(
-        "bg-surface-container-lowest rounded-2xl overflow-hidden velvet-shadow group cursor-pointer hover:-translate-y-1 transition-all duration-300 border border-outline-variant/10 flex flex-col h-full",
-        isDeleted && "opacity-75 grayscale-[0.5]"
+        "bg-white rounded-[1.5rem] overflow-hidden group cursor-pointer hover:border-amber-500/30 transition-all duration-300 border border-stone-200 flex flex-col h-full shadow-sm",
+        isDeleted && "opacity-75 grayscale-[0.5]",
       )}
     >
-      <div className="relative h-56 overflow-hidden">
+      {/* Image Container with Badges */}
+      <div className="relative h-60 overflow-hidden m-4 rounded-xl bg-stone-100">
         <Image
           src={image}
           alt={name}
@@ -64,131 +66,88 @@ export function ProductCard({
             image.includes("localhost") ||
             image.includes("127.0.0.1")
           }
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
         />
-        <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-          {isDeleted ? (
-            <span className="px-3 py-1 bg-on-surface text-surface rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-lg">
+
+        {isDeleted && (
+          <div className="absolute top-3 right-3 bg-stone-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">
               Archived
             </span>
-          ) : (
-            <span className="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant rounded-full text-[10px] font-extrabold uppercase tracking-widest backdrop-blur-md bg-opacity-90 shadow-sm">
-              {tags[0] || "Artisanal"}
-            </span>
-          )}
-        </div>
-        <div className="absolute bottom-4 left-4">
-          <div className="bg-surface-container-lowest/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-outline-variant/20 shadow-sm">
-            <p className="text-lg font-bold text-primary font-headline">
-              ${price.toFixed(2)}
-            </p>
           </div>
+        )}
+
+        {/* Price Tag */}
+        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-stone-200 shadow-sm">
+          <p className="text-sm font-black text-amber-600 font-headline">
+            ${price.toFixed(2)}
+          </p>
         </div>
       </div>
 
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className={cn(
-              "font-headline font-extrabold text-on-surface text-lg leading-tight group-hover:text-primary transition-colors",
-              isDeleted && "text-on-surface-variant line-through opacity-60"
-            )}>
+      <div className="px-6 pb-6 pt-2 flex-1 flex flex-col">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 mr-2">
+            <h3
+              className={cn(
+                "font-headline font-bold text-stone-900 text-xl leading-tight mb-1",
+                isDeleted && "line-through opacity-60",
+              )}
+            >
               {name}
             </h3>
-            <p className="text-xs text-on-surface-variant font-medium mt-0.5 line-clamp-2">
+            <p className="text-[11px] text-stone-500 font-medium line-clamp-1">
               {description}
             </p>
           </div>
-          <div className="relative group/menu">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-outline hover:text-primary hover:bg-primary/5 transition-all outline-none"
-            >
-              <span className="material-symbols-outlined text-[20px]">more_vert</span>
-            </button>
-            <div className="absolute right-0 top-full pt-2 w-40 opacity-0 group-hover/menu:opacity-100 scale-95 group-hover/menu:scale-100 pointer-events-none group-hover/menu:pointer-events-auto transition-all duration-200 z-50 origin-top-right">
-              {/* Frictionless Bridge: Ensures the menu doesn't disappear when moving the mouse */}
-              <div className="absolute -top-2 left-0 w-full h-2 pointer-events-auto" />
-              
-              <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-outline-variant/10 overflow-hidden">
-                {isDeleted ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRestore?.(id);
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-[11px] font-extrabold text-primary hover:bg-primary/5 flex items-center gap-3 transition-all first:rounded-t-xl last:rounded-b-xl"
-                >
-                  <span className="material-symbols-outlined text-lg">restore_from_trash</span>
-                  RESTORE
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit?.(id);
-                    }}
-                    className="w-full text-left px-4 py-2.5 text-[11px] font-extrabold text-on-surface hover:bg-surface-container-low flex items-center gap-3 transition-all first:rounded-t-xl"
-                  >
-                    <span className="material-symbols-outlined text-lg">edit_note</span>
-                    EDIT
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete?.(id);
-                    }}
-                    className="w-full text-left px-4 py-2.5 text-[11px] font-extrabold text-secondary hover:bg-secondary/5 flex items-center gap-3 transition-all last:rounded-b-xl"
-                  >
-                    <span className="material-symbols-outlined text-lg">archive</span>
-                    ARCHIVE
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            className="text-stone-400 hover:text-stone-900 transition-colors p-1"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
         </div>
-      </div>
 
-        <div className="flex items-center gap-2 mb-4 mt-3">
-          <div className="w-7 h-7 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed ring-2 ring-surface">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-[10px] font-black border border-amber-200">
             {chefName
               .split(" ")
               .map((n: string) => n[0])
               .join("")}
           </div>
-          <span className="text-xs font-semibold text-on-surface-variant">
+          <span className="text-xs font-bold text-stone-600 group-hover:text-amber-600 transition-colors">
             {chefName}
           </span>
         </div>
 
-        <div className="pt-4 border-t border-outline-variant/10 mt-auto">
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+        <div className="pt-5 border-t border-stone-100 mt-auto">
+          <div className="flex justify-between items-end mb-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-stone-400">
               Inventory
             </span>
             <span
               className={cn(
-                "text-[10px] font-bold",
-                isLowStock ? "text-secondary" : "text-tertiary",
+                "text-[10px] font-bold uppercase",
+                isLowStock ? "text-red-500" : "text-amber-600",
               )}
             >
               {isLowStock ? "Critically Low" : "Healthy Stock"}
             </span>
           </div>
-          <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+
+          <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden mb-2">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-1000",
-                isLowStock ? "bg-secondary animate-pulse" : "bg-tertiary",
+                isLowStock ? "bg-red-500 animate-pulse" : "bg-amber-500/80",
               )}
               style={{ width: `${stockPercentage}%` }}
             ></div>
           </div>
-          <p className="text-[10px] text-right mt-1.5 font-bold text-on-surface">
+
+          <p className="text-[10px] text-right font-black text-stone-400 uppercase tracking-widest">
             {stock}/{maxStock} units
           </p>
         </div>

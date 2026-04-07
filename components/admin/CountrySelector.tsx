@@ -47,11 +47,11 @@ export function CountrySelector({ selectedCountry, onSelect, disabled }: Country
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="h-16 px-4 bg-chocolate/5 border-2 border-transparent hover:bg-chocolate/10 rounded-2xl flex items-center gap-2 transition-all outline-none focus:border-brand/20 disabled:opacity-50"
+        className="h-14 px-4 bg-white border border-neutral-200 hover:border-brand-500/30 rounded-xl flex items-center gap-2 transition-all outline-none focus:border-brand-500 disabled:opacity-50 group"
       >
-        <span className="text-2xl">{selectedCountry.flag}</span>
-        <span className="font-bold text-chocolate/60 text-sm whitespace-nowrap">{selectedCountry.dialCode}</span>
-        <ChevronDown className={`w-4 h-4 text-chocolate/30 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <span className="text-xl">{selectedCountry.flag}</span>
+        <span className="font-bold text-neutral-600 text-xs whitespace-nowrap">{selectedCountry.dialCode}</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-neutral-300 transition-transform group-hover:text-brand-500 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       <AnimatePresence>
@@ -60,10 +60,10 @@ export function CountrySelector({ selectedCountry, onSelect, disabled }: Country
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 mt-2 w-56 bg-white border border-chocolate/5 rounded-2xl shadow-xl z-50 overflow-hidden max-h-64 overflow-y-auto"
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute top-full left-0 mt-2 w-56 bg-white border border-neutral-100 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 overflow-hidden"
           >
-            <div className="p-2 space-y-1">
+            <div className="p-1.5 space-y-0.5 max-h-64 overflow-y-auto custom-scrollbar">
               {COUNTRIES.map((country) => (
                 <button
                   key={country.code}
@@ -72,16 +72,16 @@ export function CountrySelector({ selectedCountry, onSelect, disabled }: Country
                     onSelect(country);
                     setIsOpen(false);
                   }}
-                  className="w-full h-12 px-4 rounded-xl flex items-center justify-between hover:bg-brand/5 text-left transition-colors"
+                  className="w-full h-11 px-3 rounded-lg flex items-center justify-between hover:bg-brand-50 text-left transition-colors group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{country.flag}</span>
+                    <span className="text-lg">{country.flag}</span>
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-chocolate leading-none">{country.name}</span>
-                      <span className="text-[10px] text-chocolate/40 font-bold">{country.dialCode}</span>
+                      <span className="text-[11px] font-bold text-neutral-800 leading-none">{country.name}</span>
+                      <span className="text-[9px] text-neutral-400 font-bold mt-0.5">{country.dialCode}</span>
                     </div>
                   </div>
-                  {selectedCountry.code === country.code && <Check className="w-4 h-4 text-brand" />}
+                  {selectedCountry.code === country.code && <Check className="w-3.5 h-3.5 text-brand-500" />}
                 </button>
               ))}
             </div>

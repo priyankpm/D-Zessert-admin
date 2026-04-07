@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { MoreVertical } from "lucide-react";
 
 interface CreationCardProps {
   id: string;
@@ -10,6 +11,9 @@ interface CreationCardProps {
   description?: string;
   image?: string;
   tags?: string[];
+  chefName?: string;
+  stock?: number;
+  maxStock?: number;
   onClick?: (id: string) => void;
 }
 
@@ -20,15 +24,20 @@ export function CreationCard({
   description = "A delicate masterpiece from our pastry studio.",
   image = "https://images.unsplash.com/photo-1551024506-0bccd828d307?q=80&w=800",
   tags = ["CLASSIC", "TRENDING"],
+  chefName = "Chef Marc-Antoine",
+  stock = 24,
+  maxStock = 100,
   onClick,
 }: CreationCardProps) {
+  const stockPercentage = (stock / maxStock) * 100;
+
   return (
-    <div 
+    <div
       onClick={() => onClick?.(id)}
-      className="bg-white rounded-[2rem] p-3 shadow-[0px_10px_35px_rgba(43,22,19,0.03)] border border-outline-variant/10 group cursor-pointer hover:-translate-y-1 transition-all duration-500"
+      className="bg-white rounded-[1.5rem] p-4 border border-stone-200 group cursor-pointer hover:border-amber-500/30 transition-all duration-300 shadow-sm"
     >
-      {/* Image Container */}
-      <div className="aspect-[4/3] rounded-[1.5rem] overflow-hidden relative mb-4">
+      {/* Image */}
+      <div className="aspect-[4/3] rounded-xl overflow-hidden relative mb-4 bg-stone-100">
         <Image
           src={image}
           alt={name}
@@ -38,40 +47,60 @@ export function CreationCard({
             image.includes("localhost") ||
             image.includes("127.0.0.1")
           }
-          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000"
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
         />
-      </div>
-
-      {/* Content */}
-      <div className="px-2 pb-3">
-        <div className="flex justify-between items-center mb-1">
-          <h4 className="text-lg font-extrabold text-on-surface font-headline tracking-tight group-hover:text-primary transition-colors">
-            {name}
-          </h4>
-          <span className="text-sm font-bold text-on-surface-variant font-headline">
+        {/* Price Badge */}
+        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-stone-200 shadow-lg">
+          <span className="text-amber-600 text-xs font-bold font-headline">
             ${price.toFixed(2)}
           </span>
         </div>
-        
-        <p className="text-xs text-on-surface-variant/70 font-medium mb-4 line-clamp-1 leading-relaxed">
-          {description}
-        </p>
+      </div>
 
-        {/* Tags */}
-        <div className="flex gap-2 flex-wrap">
-          {tags.map((tag) => (
-            <span 
-              key={tag}
-              className={cn(
-                "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest",
-                tag === "TRENDING" 
-                  ? "bg-secondary-fixed text-on-secondary-fixed shadow-sm" 
-                  : "bg-surface-variant/30 text-on-surface-variant border border-outline-variant/10"
-              )}
-            >
-              {tag}
-            </span>
-          ))}
+      {/* Header & Description */}
+      <div className="px-1 mb-4 flex justify-between items-start">
+        <div className="flex-1 mr-2">
+          <h4 className="text-lg font-bold text-stone-900 font-headline leading-tight mb-1">
+            {name}
+          </h4>
+          <p className="text-[11px] text-stone-500 font-medium line-clamp-1">
+            {description}
+          </p>
+        </div>
+        <button className="p-1 px-2 text-stone-400 hover:text-stone-900 transition-colors">
+          <MoreVertical className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Chef Section */}
+      <div className="px-1 mb-5 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-[10px] font-black border border-amber-200">
+          {chefName
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}
+        </div>
+        <span className="text-xs font-bold text-stone-600">{chefName}</span>
+      </div>
+
+      {/* Inventory Footer */}
+      <div className="px-1 pt-4 border-t border-stone-100">
+        <div className="flex justify-between items-end mb-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-stone-400">
+            Inventory
+          </span>
+          <span className="text-[10px] font-bold text-amber-600">
+            {stock > 20 ? "Healthy" : "Low"} Stock
+          </span>
+        </div>
+        <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden mb-2">
+          <div
+            className="h-full bg-amber-500/80 rounded-full transition-all duration-1000"
+            style={{ width: `${stockPercentage}%` }}
+          />
+        </div>
+        <div className="text-[10px] font-black text-stone-400 text-right uppercase tracking-[0.1em]">
+          {stock}/{maxStock} units
         </div>
       </div>
     </div>
