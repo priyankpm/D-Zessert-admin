@@ -1,18 +1,23 @@
-# Stage 1: Build the admin app (if you haven't built it yet)
-# FROM node:20-alpine AS builder
-# WORKDIR /app
-# COPY package*.json ./
-# RUN npm install
-# COPY . .
-# RUN npm run build
+# Use a lightweight Node.js image
+FROM node:20-alpine
 
-# Stage 2: Serve with nginx
-FROM nginx:alpine
-COPY ./build /usr/share/nginx/html
-# If Angular: COPY ./dist/your-app-name /usr/share/nginx/html
+# Set working directory inside the container
+WORKDIR /app
 
-# Copy custom nginx config (optional)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy package.json and package-lock.json first for caching dependencies
+COPY package*.json ./
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Install dependencies (including production dependencies)
+RUN npm install --production
+
+# Copy all the application files into the container
+COPY . .
+
+# Build the Next.js application
+RUN npm run build
+
+# Expose port 3000 (Next.js default)
+EXPOSE 3000
+
+# Start the Next.js server in production mode
+CMD ["npm", "start"]
