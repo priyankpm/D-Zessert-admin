@@ -4,13 +4,14 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { authStorage } from "@/lib/auth";
 import { Search, Bell } from "lucide-react";
+import { User } from "@/lib/api/types";
 
 export function Header() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [query, setQuery] = useState(searchParams.get("search") || "");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     setUser(authStorage.getUser());

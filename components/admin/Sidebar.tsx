@@ -16,6 +16,11 @@ export function Sidebar() {
       label: "Product Management",
       href: "/admin/products",
     },
+    {
+      icon: UtensilsCrossed,
+      label: "Chef Management",
+      href: "/admin/chefs",
+    },
   ];
 
   return (

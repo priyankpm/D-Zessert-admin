@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
+import { Toaster } from "@/components/admin/Toaster";
 import { Loader2 } from "lucide-react";
 import { authStorage } from "@/lib/auth";
 
@@ -34,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Header />
         <main className="p-10 min-h-screen bg-stone-50">{children}</main>
       </div>
+      <Toaster />
     </div>
   );
 }

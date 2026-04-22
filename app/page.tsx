@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import { AuthService } from "@/lib/api/auth-service";
 import { authStorage } from "@/lib/auth";
 import {
@@ -43,11 +44,12 @@ export default function Home() {
     try {
       await AuthService.sendOtp(fullPhoneNumber);
       setStep("code");
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          "Failed to send code. Please try again.",
-      );
+    } catch (err: unknown) {
+      let message = "Failed to send code. Please try again.";
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message || message;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -74,13 +76,15 @@ export default function Home() {
       authStorage.setUser(response.user);
 
       router.push("/admin");
-    } catch (err: any) {
-      const backendError = err?.response?.data?.message;
-      setError(
-        Array.isArray(backendError)
+    } catch (err: unknown) {
+      let message = "Invalid code. Please check and try again.";
+      if (axios.isAxiosError(err)) {
+        const backendError = err.response?.data?.message;
+        message = Array.isArray(backendError)
           ? backendError.join(". ")
-          : backendError || "Invalid code. Please check and try again.",
-      );
+          : backendError || message;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

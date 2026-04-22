@@ -1,47 +1,79 @@
 import api from './axios-instance';
-
-/**
- * Common API Response Wrapper
- */
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
+import { ApiResponse } from './types';
+export type { ApiResponse };
+import { Chef } from './chef-service';
+import { Ingredient } from './ingredient-service';
+import { Topping } from './topping-service';
 
 /**
  * Product Data Interfaces
  */
+export interface ProductRecommendation {
+  id: string;
+  productId: string;
+  recommendedId: string;
+  recommended: Product;
+}
+
 export interface Product {
   id: string;
   name: string;
-  price: number;
-  oldPrice?: number;
   description?: string;
-  calories?: number;
-  rating: number;
-  reviews: number;
-  match: number;
-  chefName?: string;
-  tags: string[];
   imageUrl?: string;
   gallery: string[];
-  preferredMood?: string;
-  stock: number;
-  experienceType?: string;
+  chefsPick?: boolean;
+  prepTime?: number;
+  calories?: number;
+  grade?: string;
+  sweetnessLevel?: number;
+  ritualTitle?: string;
+  ritualSubTitle?: string;
+  ritualDescription?: string;
+  story?: string;
+  price: number;
+  discountedPrice?: number;
+  currency: string;
   isActive: boolean;
   isDeleted: boolean;
+  stock: number;
+  chefId?: string;
+  chef?: Chef;
+  ingredients?: Ingredient[];
+  toppings?: Topping[];
+  rating?: number;
+  reviews?: number;
+  recommendations?: ProductRecommendation[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateProductDto extends Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive' | 'isDeleted' | 'rating' | 'reviews'> {
-  rating?: number;
-  reviews?: number;
-  isDeleted?: boolean;
+export interface CreateProductDto {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  gallery?: string[];
+  chefsPick?: boolean;
+  prepTime?: number;
+  calories?: number;
+  grade?: string;
+  sweetnessLevel?: number;
+  ritualTitle?: string;
+  ritualSubTitle?: string;
+  ritualDescription?: string;
+  story?: string;
+  price: number;
+  discountedPrice?: number;
+  currency?: string;
+  stock?: number;
+  chefId?: string;
+  ingredientIds?: string[];
+  toppingIds?: string[];
+  recommendations?: { recommendedId: string }[];
 }
 
-export interface UpdateProductDto extends Partial<CreateProductDto> { }
+export interface UpdateProductDto extends Partial<CreateProductDto> {
+  isDeleted?: boolean;
+}
 
 /**
  * Product Service
@@ -55,7 +87,7 @@ class ProductServiceClass {
    */
   async findAll(): Promise<Product[]> {
     try {
-      const response = await api.get<ApiResponse<Product[]>>('/products');
+      const response = await api.get<ApiResponse<Product[]>>('admin/products');
       return response.data.data; // Standardly extract data from the wrapper
     } catch (error) {
       this.handleError(error, 'Failed to fetch products');
@@ -68,7 +100,7 @@ class ProductServiceClass {
    */
   async findOne(id: string): Promise<Product> {
     try {
-      const response = await api.get<ApiResponse<Product>>(`/products/${id}`);
+      const response = await api.get<ApiResponse<Product>>(`admin/products/${id}`);
       return response.data.data;
     } catch (error) {
       this.handleError(error, `Failed to fetch product with ID: ${id}`);
@@ -81,7 +113,7 @@ class ProductServiceClass {
    */
   async create(productData: CreateProductDto): Promise<Product> {
     try {
-      const response = await api.post<ApiResponse<Product>>('/products', productData);
+      const response = await api.post<ApiResponse<Product>>('admin/products', productData);
       return response.data.data;
     } catch (error) {
       this.handleError(error, 'Failed to create product');
@@ -94,7 +126,7 @@ class ProductServiceClass {
    */
   async update(id: string, productData: UpdateProductDto): Promise<Product> {
     try {
-      const response = await api.patch<ApiResponse<Product>>(`/products/${id}`, productData);
+      const response = await api.patch<ApiResponse<Product>>(`admin/products/${id}`, productData);
       return response.data.data;
     } catch (error) {
       this.handleError(error, `Failed to update product with ID: ${id}`);
@@ -107,7 +139,7 @@ class ProductServiceClass {
    */
   async remove(id: string): Promise<void> {
     try {
-      await api.delete<ApiResponse<void>>(`/products/${id}`);
+      await api.delete<ApiResponse<void>>(`admin/products/${id}`);
     } catch (error) {
       this.handleError(error, `Failed to delete product with ID: ${id}`);
       throw error;
@@ -120,19 +152,13 @@ class ProductServiceClass {
   async uploadFile(file: File): Promise<string> {
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      const response = await api.post<ApiResponse<string>>('/products/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      formData.append("file", file);
+      const response = await api.post<{ url: string }>("admin/products/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      // response.data.data might be { success: true, url: '...' } based on my controller
-      // Wait, my controller returns { success: true, url }
-      // So response.data.data is { success: true, url }? 
-      // Actually, ApiResponse is { success, message, data }
-      // If controller returns { success, url }, NestJS wraps it? No.
-      // My Service handles it.
-      return (response.data as any).url;
+      return response.data.url;
     } catch (error) {
-      this.handleError(error, 'Failed to upload image');
+      this.handleError(error, "Failed to upload image");
       throw error;
     }
   }
@@ -143,13 +169,17 @@ class ProductServiceClass {
   async uploadGallery(files: File[]): Promise<string[]> {
     try {
       const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      const response = await api.post<ApiResponse<string[]>>('/products/upload-gallery', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      return (response.data as any).urls;
+      files.forEach((file) => formData.append("files", file));
+      const response = await api.post<{ urls: string[] }>(
+        "admin/products/upload-gallery",
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+      return response.data.urls;
     } catch (error) {
-      this.handleError(error, 'Failed to upload gallery');
+      this.handleError(error, "Failed to upload gallery");
       throw error;
     }
   }
@@ -157,7 +187,7 @@ class ProductServiceClass {
   /**
    * Centralized error handler for logging
    */
-  private handleError(error: any, fallbackMessage: string) {
+  private handleError(error: unknown, fallbackMessage: string) {
     console.error(`[ProductService] ${fallbackMessage}:`, error);
   }
 }

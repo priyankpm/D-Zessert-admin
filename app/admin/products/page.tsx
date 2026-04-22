@@ -5,15 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ProductCard } from "@/components/admin/ProductCard";
 import { ProductService, Product } from "@/lib/api/product-service";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { 
-  Plus, 
-  ChevronDown, 
-  SlidersHorizontal, 
-  AlertCircle, 
-  ChevronLeft, 
+import {
+  Plus,
+  SlidersHorizontal,
+  AlertCircle,
+  ChevronLeft,
   ChevronRight,
-  ArrowUpDown
+  ArrowUpDown,
 } from "lucide-react";
 
 function ProductsPageContent() {
@@ -21,8 +21,6 @@ function ProductsPageContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [category, setCategory] = useState("All Masterpieces");
-  const [refine, setRefine] = useState("All Collections");
   const [priceRange, setPriceRange] = useState("Any Price");
   const [stockStatus, setStockStatus] = useState("All Inventory");
   const [sortBy, setSortBy] = useState("Newest First");
@@ -36,64 +34,45 @@ function ProductsPageContent() {
     setSearchQuery(searchParams.get("search") || "");
   }, [searchParams]);
 
-  // Fetch products on component mount
+  // Fetch products once on mount
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setIsLoading(true);
         const data = await ProductService.findAll();
         setProducts(data);
-      } catch (error) {
-        console.error("Failed to load products:", error);
+      } catch {
+        toast.error("Failed to load products. Please refresh.");
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchProducts();
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to archive this masterpiece?"))
-      return;
+    if (!window.confirm("Are you sure you want to archive this masterpiece?")) return;
     try {
       await ProductService.remove(id);
-      setProducts((prevProducts) =>
-        prevProducts.map((p) => (p.id === id ? { ...p, isDeleted: true } : p)),
-      );
-    } catch (error) {
-      console.error("Failed to delete product:", error);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isDeleted: true } : p)));
+      toast.success("Product archived successfully.");
+    } catch {
+      toast.error("Failed to archive product. Please try again.");
     }
   };
 
   const handleRestore = async (id: string) => {
     try {
       await ProductService.update(id, { isDeleted: false });
-      setProducts((prevProducts) =>
-        prevProducts.map((p) => (p.id === id ? { ...p, isDeleted: false } : p)),
-      );
-    } catch (error) {
-      console.error("Failed to restore product:", error);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isDeleted: false } : p)));
+      toast.success("Product restored successfully.");
+    } catch {
+      toast.error("Failed to restore product. Please try again.");
     }
   };
-
   // Filtering & Sorting Logic
-  const filteredProducts = products
+  const filteredProducts = (products || [])
     .filter((product) => {
-      if (category !== "All Masterpieces") {
-        const matchesCategory = product.tags?.some(
-          (tag) => tag.toLowerCase() === category.toLowerCase(),
-        );
-        if (!matchesCategory) return false;
-      }
-
-      if (refine !== "All Collections") {
-        const matchesCollection = product.tags?.some(
-          (tag) => tag.toLowerCase() === refine.toLowerCase(),
-        );
-        if (!matchesCollection) return false;
-      }
-
       if (priceRange !== "Any Price") {
         if (priceRange === "Under $10" && product.price >= 10) return false;
         if (
@@ -142,7 +121,7 @@ function ProductsPageContent() {
           </h2>
           <p className="text-stone-500 font-body flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            Displaying {filteredProducts.length} artisanal masterpieces
+            Displaying {filteredProducts?.length} artisanal masterpieces
             currently in stock
           </p>
         </div>
@@ -160,60 +139,10 @@ function ProductsPageContent() {
       {/* Filters & Tabs Section */}
       <div className="flex flex-col gap-8 mb-10">
         {/* Category Tabs */}
-        <div className="flex items-center gap-8 border-b border-stone-200 overflow-x-auto custom-scrollbar">
-          {["All Products"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setCategory(tab)}
-              className={cn(
-                "pb-4 text-sm font-bold uppercase tracking-widest transition-all relative whitespace-nowrap",
-                category === tab
-                  ? "text-amber-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-1 after:bg-amber-600 after:rounded-t-full"
-                  : "text-stone-400 hover:text-amber-600",
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
 
         {/* Filters Bento */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {/* Refine Dropdown */}
-          <div className="relative group">
-            <div
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "refine" ? null : "refine")
-              }
-              className="bg-white p-4 rounded-2xl flex items-center justify-between cursor-pointer border border-stone-200 hover:border-amber-500/30 transition-all shadow-sm"
-            >
-              <div>
-                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
-                  Refine
-                </p>
-                <p className="font-headline font-bold text-amber-700 text-sm">{refine}</p>
-              </div>
-              <ChevronDown className="w-4 h-4 text-stone-400" />
-            </div>
-            {activeDropdown === "refine" && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] z-50 py-2 border border-stone-200">
-                {["All Collections", "Summer", "Signature", "Gift Boxes"].map(
-                  (opt) => (
-                    <button
-                      key={opt}
-                      onClick={() => {
-                        setRefine(opt);
-                        setActiveDropdown(null);
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 font-bold text-stone-600 hover:text-amber-600 transition-colors"
-                    >
-                      {opt}
-                    </button>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
 
           {/* Price Range Dropdown */}
           <div className="relative group">
@@ -299,7 +228,9 @@ function ProductsPageContent() {
                 <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1.5">
                   Sort By
                 </p>
-                <p className="font-headline font-bold text-amber-700 text-sm">{sortBy}</p>
+                <p className="font-headline font-bold text-amber-700 text-sm">
+                  {sortBy}
+                </p>
               </div>
               <ArrowUpDown className="w-4 h-4 text-stone-400" />
             </div>
@@ -333,12 +264,13 @@ function ProductsPageContent() {
         <div className="flex items-center justify-center p-20">
           <div className="w-10 h-10 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
         </div>
-      ) : filteredProducts.length > 0 ? (
+      ) : filteredProducts?.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
-          {filteredProducts.map((product) => (
+          {filteredProducts?.map((product) => (
             <ProductCard
               key={product.id}
               {...product}
+              chefName={product.chef?.name}
               image={product.imageUrl || "/placeholder.png"}
               isDeleted={product.isDeleted}
               onEdit={(id) => router.push(`/admin/products/${id}/edit`)}
@@ -355,8 +287,6 @@ function ProductsPageContent() {
           </p>
           <button
             onClick={() => {
-              setCategory("All Masterpieces");
-              setRefine("All Collections");
               setPriceRange("Any Price");
               setStockStatus("All Inventory");
               setActiveDropdown(null);
@@ -369,9 +299,9 @@ function ProductsPageContent() {
       )}
 
       {/* Pagination */}
-      <div className="px-6 py-8 flex items-center justify-between border-t border-stone-200">
+      <div className="px-6 py-8 flex items-center justify-between border-stone-200">
         <p className="text-xs font-medium text-stone-400 font-body">
-          Showing 1 - {filteredProducts.length} of {filteredProducts.length}{" "}
+          Showing 1 - {filteredProducts?.length} of {filteredProducts?.length}{" "}
           artisanal products
         </p>
         <div className="flex items-center gap-2">
@@ -396,7 +326,11 @@ function ProductsPageContent() {
 export default function ProductsPage() {
   return (
     <Suspense
-      fallback={<div className="p-20 text-center text-stone-400 font-bold uppercase tracking-widest">Loading Gallery...</div>}
+      fallback={
+        <div className="p-20 text-center text-stone-400 font-bold uppercase tracking-widest">
+          Loading Gallery...
+        </div>
+      }
     >
       <ProductsPageContent />
     </Suspense>

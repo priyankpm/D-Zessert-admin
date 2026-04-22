@@ -8,14 +8,12 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
-  oldPrice?: number;
-  rating: number;
-  reviews: number;
+  discountedPrice?: number;
+  rating?: number;
+  reviews?: number;
   image: string;
   description?: string;
-  tags: string[];
   calories?: number;
-  match?: number;
   chefName?: string;
   sku?: string;
   stock?: number;
@@ -32,7 +30,6 @@ export function ProductCard({
   name,
   price,
   image,
-  tags,
   chefName = "Julian Valery",
   description = "A delicate masterpiece handcrafted by our head curator.",
   sku = "",
@@ -80,7 +77,7 @@ export function ProductCard({
         {/* Price Tag */}
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-stone-200 shadow-sm">
           <p className="text-sm font-black text-amber-600 font-headline">
-            ${price.toFixed(2)}
+            ${price != null ? price.toFixed(2) : "0.00"}
           </p>
         </div>
       </div>

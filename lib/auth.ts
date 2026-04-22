@@ -1,3 +1,5 @@
+import { User } from "./api/types";
+
 /**
  * Token management utility to centralize authentication logic
  */
@@ -16,7 +18,7 @@ export const authStorage = {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(AUTH_KEYS.REFRESH_TOKEN);
   },
-  getUser: () => {
+  getUser: (): User | null => {
     if (typeof window === "undefined") return null;
     const user = localStorage.getItem(AUTH_KEYS.USER);
     return user ? JSON.parse(user) : null;
@@ -26,7 +28,7 @@ export const authStorage = {
     localStorage.setItem(AUTH_KEYS.ACCESS_TOKEN, accessToken);
     localStorage.setItem(AUTH_KEYS.REFRESH_TOKEN, refreshToken);
   },
-  setUser: (user: any) => {
+  setUser: (user: User) => {
     if (typeof window === "undefined") return;
     localStorage.setItem(AUTH_KEYS.USER, JSON.stringify(user));
   },

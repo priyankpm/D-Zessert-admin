@@ -1,26 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ProductService } from "@/lib/api/product-service";
+import { ProductService, Product } from "@/lib/api/product-service";
 import {
-  Camera,
-  Trash2,
   AlertCircle,
-  Image as ImageIcon,
+  Camera,
   CheckCircle2,
+  Image as ImageIcon,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
-
-const PREDEFINED_MOODS = [
-  "Serenity",
-  "Indulgence",
-  "Vitality",
-  "Melancholy Cure",
-  "Nostalgia",
-  "Deep Focus",
-];
+import { IngredientService, Ingredient } from "@/lib/api/ingredient-service";
+import { ToppingService, Topping } from "@/lib/api/topping-service";
+import { ChefService, Chef } from "@/lib/api/chef-service";
+import { IngredientSelectDropdown } from "@/components/admin/IngredientSelectDropdown";
+import { ProductRecommendationDropdown } from "@/components/admin/ProductRecommendationDropdown";
+import { ToppingSelectDropdown } from "@/components/admin/ToppingSelectDropdown";
+import { toast } from "@/lib/toast";
 
 // ── Inline error helper ──────────────────────────────────────────
 function FieldError({ message }: { message?: string }) {
@@ -42,15 +40,43 @@ export default function AddProductPage() {
   const [formData, setFormData] = useState({
     name: "",
     price: "",
-    oldPrice: "",
+    discountedPrice: "",
     description: "",
     calories: "",
-    chefName: "",
-    match: "",
+    chefId: "",
     stock: "",
-    experienceType: "",
-    tags: [] as string[],
+    ingredients: [] as string[],
+    toppings: [] as string[],
+    recommendationIds: [] as string[],
   });
+
+  const [availableIngredients, setAvailableIngredients] = useState<
+    Ingredient[]
+  >([]);
+  const [availableToppings, setAvailableToppings] = useState<Topping[]>([]);
+  const [availableChefs, setAvailableChefs] = useState<Chef[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+
+  const fetchResources = async () => {
+    try {
+      const [ings, tops, chefs, prods] = await Promise.all([
+        IngredientService.findAll(),
+        ToppingService.findAll(),
+        ChefService.findAll(),
+        ProductService.findAll(),
+      ]);
+      setAvailableIngredients(ings);
+      setAvailableToppings(tops);
+      setAvailableChefs(chefs);
+      setAvailableProducts(prods);
+    } catch {
+      toast.error("Failed to load resources. Please refresh.");
+    }
+  };
+
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
@@ -126,90 +152,46 @@ export default function AddProductPage() {
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter((t) => t !== tag)
-        : [...prev.tags, tag],
-    }));
-    clearError("tags");
-  };
-
   // ── Validation ───────────────────────────────────────────────────
   const validate = (): Record<string, string> => {
     const errors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
       errors.name = "Please enter a name for the confection.";
-    } else if (formData.name.trim().length < 3) {
-      errors.name = "Name must be at least 3 characters long.";
     }
 
-    if (!formData.chefName) {
-      errors.chefName = "Please select the artisan chef responsible.";
-    }
-
-    if (!formData.experienceType) {
-      errors.experienceType =
-        "Please select an experience type for this product.";
+    if (!formData.chefId) {
+      errors.chefId = "Please select the artisan chef responsible.";
     }
 
     if (!formData.description.trim()) {
-      errors.description =
-        "Please describe the sensory profile of this confection.";
-    } else if (formData.description.trim().length < 20) {
-      errors.description = "Description should be at least 20 characters.";
+      errors.description = "Please describe the sensory profile.";
     }
 
     if (!formData.price) {
       errors.price = "Price is required.";
-    } else if (
-      isNaN(parseFloat(formData.price)) ||
-      parseFloat(formData.price) <= 0
-    ) {
-      errors.price = "Please enter a valid price greater than $0.";
-    }
-
-    if (
-      formData.oldPrice &&
-      parseFloat(formData.oldPrice) <= parseFloat(formData.price)
-    ) {
-      errors.oldPrice = "Compare price must be higher than the base price.";
     }
 
     if (!formData.stock) {
       errors.stock = "Stock quantity is required.";
-    } else if (parseInt(formData.stock) < 0) {
-      errors.stock = "Stock cannot be a negative number.";
     }
 
     if (!formData.calories) {
       errors.calories = "Caloric value is required.";
-    } else if (parseInt(formData.calories) < 0) {
-      errors.calories = "Calories cannot be a negative number.";
-    }
-
-    if (
-      formData.match &&
-      (parseInt(formData.match) < 0 || parseInt(formData.match) > 100)
-    ) {
-      errors.match = "Match percentage must be between 0 and 100.";
-    }
-
-    if (formData.tags.length === 0) {
-      errors.tags =
-        "Select at least one emotional tone / mood for this confection.";
     }
 
     if (!imagePreview) {
-      errors.mainImage = "A hero image is required to publish this product.";
+      errors.mainImage = "A hero image is required.";
     }
 
     const filledGallery = galleryPreviews.filter((p) => p !== null).length;
     if (filledGallery < 2) {
       errors.gallery =
         "Please upload at least 2 gallery images to showcase angles.";
+    }
+
+    if (formData.ingredients.length === 0) {
+      errors.ingredients = "Please select or add at least one ingredient.";
     }
 
     return errors;
@@ -223,7 +205,6 @@ export default function AddProductPage() {
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       setSubmitError("Please fix the errors below before publishing.");
-      setLoading(false);
       return;
     }
 
@@ -238,27 +219,42 @@ export default function AddProductPage() {
       if (validFiles.length > 0)
         galleryUrls = await ProductService.uploadGallery(validFiles);
 
+      const ingredientIds = formData.ingredients
+        .map((name) => availableIngredients.find((i) => i.name === name)?.id)
+        .filter((id): id is string => id !== undefined);
+
+      const toppingIds = formData.toppings
+        .map((name) => availableToppings.find((t) => t.name === name)?.id)
+        .filter((id): id is string => id !== undefined);
+
       await ProductService.create({
         name: formData.name,
         price: parseFloat(formData.price),
-        oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
+        discountedPrice: formData.discountedPrice
+          ? parseFloat(formData.discountedPrice)
+          : undefined,
         description: formData.description,
         calories: parseInt(formData.calories) || 0,
         stock: parseInt(formData.stock) || 0,
-        match: parseInt(formData.match) || 95,
-        chefName: formData.chefName,
-        tags: formData.tags,
-        experienceType: formData.experienceType,
+        chefId: formData.chefId,
+        ingredientIds,
+        toppingIds,
+        recommendations: formData.recommendationIds.map((id) => ({
+          recommendedId: id,
+        })),
         imageUrl: mainImageUrl,
         gallery: galleryUrls,
-        preferredMood: formData.tags[0] || "",
-        rating: 4.5,
-        reviews: 0,
       });
 
+      toast.success("Product created successfully!");
       router.push("/admin/products");
-    } catch (err: any) {
-      setSubmitError(err.message || "Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.";
+      setSubmitError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -321,10 +317,7 @@ export default function AddProductPage() {
           <section
             className={cn(
               "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
-              formErrors.name ||
-                formErrors.chefName ||
-                formErrors.experienceType ||
-                formErrors.description
+              formErrors.name || formErrors.chefId || formErrors.description
                 ? "border-red-200"
                 : "border-stone-200",
             )}
@@ -357,51 +350,29 @@ export default function AddProductPage() {
               </div>
 
               {/* Chef */}
-              <div>
+              <div className="col-span-2 md:col-span-1">
                 <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
                   Artisan Chef <span className="text-red-400">*</span>
                 </label>
                 <select
-                  name="chefName"
-                  value={formData.chefName}
+                  name="chefId"
+                  value={formData.chefId}
                   onChange={handleInputChange}
                   className={cn(
-                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40 appearance-none cursor-pointer",
-                    formErrors.chefName
+                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40 appearance-none cursor-pointer font-bold uppercase text-[11px] tracking-wider",
+                    formErrors.chefId
                       ? "border-red-400 bg-red-50/30"
                       : "border-stone-200",
                   )}
                 >
                   <option value="">— Select Chef —</option>
-                  <option>Executive Chef Liz</option>
-                  <option>Chef Marc-Antoine</option>
-                  <option>Chef Sofia Rossi</option>
+                  {availableChefs.map((chef) => (
+                    <option key={chef.id} value={chef.id}>
+                      {chef.name}
+                    </option>
+                  ))}
                 </select>
-                <FieldError message={formErrors.chefName} />
-              </div>
-
-              {/* Experience Type */}
-              <div>
-                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
-                  Experience Type <span className="text-red-400">*</span>
-                </label>
-                <select
-                  name="experienceType"
-                  value={formData.experienceType}
-                  onChange={handleInputChange}
-                  className={cn(
-                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40 appearance-none cursor-pointer",
-                    formErrors.experienceType
-                      ? "border-red-400 bg-red-50/30"
-                      : "border-stone-200",
-                  )}
-                >
-                  <option value="">— Select Type —</option>
-                  <option>In-Studio Ritual</option>
-                  <option>Gifting Collection</option>
-                  <option>Seasonal Flight</option>
-                </select>
-                <FieldError message={formErrors.experienceType} />
+                <FieldError message={formErrors.chefId} />
               </div>
 
               {/* Description */}
@@ -437,10 +408,9 @@ export default function AddProductPage() {
             className={cn(
               "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
               formErrors.price ||
-                formErrors.oldPrice ||
+                formErrors.discountedPrice ||
                 formErrors.stock ||
-                formErrors.calories ||
-                formErrors.match
+                formErrors.calories
                 ? "border-red-200"
                 : "border-stone-200",
             )}
@@ -475,18 +445,18 @@ export default function AddProductPage() {
                 <FieldError message={formErrors.price} />
               </div>
 
-              {/* Compare Price */}
+              {/* Discounted Price */}
               <div>
                 <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
-                  Compare At ($)
+                  Compare Price ($)
                 </label>
                 <input
-                  name="oldPrice"
-                  value={formData.oldPrice}
+                  name="discountedPrice"
+                  value={formData.discountedPrice}
                   onChange={handleInputChange}
                   className={cn(
                     "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
-                    formErrors.oldPrice
+                    formErrors.discountedPrice
                       ? "border-red-400 bg-red-50/30"
                       : "border-stone-200",
                   )}
@@ -495,7 +465,7 @@ export default function AddProductPage() {
                   min="0"
                   step="0.01"
                 />
-                <FieldError message={formErrors.oldPrice} />
+                <FieldError message={formErrors.discountedPrice} />
               </div>
 
               {/* Stock */}
@@ -541,30 +511,24 @@ export default function AddProductPage() {
                 />
                 <FieldError message={formErrors.calories} />
               </div>
-
-              {/* Match % */}
-              <div className="col-span-2">
-                <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
-                  Mood Match %{" "}
-                  <span className="text-stone-300 font-normal">(optional)</span>
-                </label>
-                <input
-                  name="match"
-                  value={formData.match}
-                  onChange={handleInputChange}
-                  className={cn(
-                    "w-full bg-stone-50 border rounded-xl p-4 outline-none text-stone-800 transition-colors focus:border-amber-500/40",
-                    formErrors.match
-                      ? "border-red-400 bg-red-50/30"
-                      : "border-stone-200",
-                  )}
-                  placeholder="95"
-                  type="number"
-                  min="0"
-                  max="100"
-                />
-                <FieldError message={formErrors.match} />
-              </div>
+            </div>
+          </section>
+          <section className="bg-white p-8 rounded-[2rem] border border-stone-200 shadow-sm transition-colors">
+            <div className="flex items-center gap-3 mb-8">
+              <span className="w-8 h-[1px] bg-amber-500/50" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
+                Upsell & Recommendations
+              </h3>
+            </div>
+            <div className="space-y-6">
+              <ProductRecommendationDropdown
+                label="Recommended Masterpieces"
+                allProducts={availableProducts}
+                selectedIds={formData.recommendationIds}
+                onChange={(ids) =>
+                  setFormData((prev) => ({ ...prev, recommendationIds: ids }))
+                }
+              />
             </div>
           </section>
         </div>
@@ -675,9 +639,6 @@ export default function AddProductPage() {
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-stone-200 gap-1">
                           <ImageIcon className="w-5 h-5" />
-                          <span className="text-[7px] font-black uppercase text-stone-300">
-                            {i + 1}
-                          </span>
                           <input
                             type="file"
                             className="absolute inset-0 opacity-0 cursor-pointer"
@@ -694,43 +655,105 @@ export default function AddProductPage() {
             </div>
           </section>
 
-          {/* Emotional Tones */}
-          <section
-            className={cn(
-              "bg-white p-8 rounded-[2rem] border shadow-sm transition-colors",
-              formErrors.tags ? "border-red-200" : "border-stone-200",
-            )}
-          >
+          <section className="bg-white p-8 rounded-[2rem] border border-stone-200 shadow-sm transition-colors">
             <div className="flex items-center gap-3 mb-8">
               <span className="w-8 h-[1px] bg-amber-500/50" />
               <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">
-                Emotional Tones <span className="text-red-400">*</span>
+                Resource Management
               </h3>
             </div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {PREDEFINED_MOODS.map((mood) => (
-                <button
-                  key={mood}
-                  type="button"
-                  onClick={() => toggleTag(mood)}
-                  className={cn(
-                    "px-4 py-2 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95",
-                    formData.tags.includes(mood)
-                      ? "border-amber-500 bg-amber-50 text-amber-600 shadow-sm"
-                      : "border-stone-200 text-stone-400 hover:border-stone-300 hover:text-stone-600",
-                  )}
-                >
-                  {mood}
-                </button>
-              ))}
+            <div className="space-y-6">
+              <IngredientSelectDropdown
+                label="Ingredients"
+                allIngredients={availableIngredients}
+                selectedNames={formData.ingredients}
+                onChange={(vals: string[]) =>
+                  setFormData((prev) => ({ ...prev, ingredients: vals }))
+                }
+                error={formErrors.ingredients}
+                onAdd={async (name: string) => {
+                  try {
+                    await IngredientService.create({ name });
+                    await fetchResources();
+                    toast.success("Ingredient added.");
+                  } catch {
+                    toast.error("Failed to add ingredient.");
+                  }
+                }}
+                onEdit={async (oldName: string, newName: string) => {
+                  try {
+                    const item = availableIngredients.find(
+                      (i) => i.name === oldName,
+                    );
+                    if (item)
+                      await IngredientService.update(item.id, {
+                        name: newName,
+                      });
+                    await fetchResources();
+                    toast.success("Ingredient updated.");
+                  } catch {
+                    toast.error("Failed to update ingredient.");
+                  }
+                }}
+                onDelete={async (name: string) => {
+                  try {
+                    const item = availableIngredients.find(
+                      (i) => i.name === name,
+                    );
+                    if (item) await IngredientService.remove(item.id);
+                    await fetchResources();
+                    toast.success("Ingredient deleted.");
+                  } catch {
+                    toast.error("Failed to delete ingredient.");
+                  }
+                }}
+              />
+
+              <ToppingSelectDropdown
+                label="Premium Toppings"
+                allToppings={availableToppings}
+                selectedNames={formData.toppings}
+                onChange={(names) =>
+                  setFormData((prev) => ({ ...prev, toppings: names }))
+                }
+                error={formErrors.toppings}
+                onAdd={async (name, price) => {
+                  try {
+                    await ToppingService.create({ name, price });
+                    await fetchResources();
+                    toast.success("Topping added.");
+                  } catch {
+                    toast.error("Failed to add topping.");
+                  }
+                }}
+                onEdit={async (oldName, newName, price) => {
+                  try {
+                    const item = availableToppings.find(
+                      (i) => i.name === oldName,
+                    );
+                    if (item)
+                      await ToppingService.update(item.id, {
+                        name: newName,
+                        price,
+                      });
+                    await fetchResources();
+                    toast.success("Topping updated.");
+                  } catch {
+                    toast.error("Failed to update topping.");
+                  }
+                }}
+                onDelete={async (name) => {
+                  try {
+                    const item = availableToppings.find((i) => i.name === name);
+                    if (item) await ToppingService.remove(item.id);
+                    await fetchResources();
+                    toast.success("Topping deleted.");
+                  } catch {
+                    toast.error("Failed to delete topping.");
+                  }
+                }}
+              />
             </div>
-            {formData.tags.length > 0 && (
-              <p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest mt-3 ml-1">
-                {formData.tags.length} mood{formData.tags.length > 1 ? "s" : ""}{" "}
-                selected
-              </p>
-            )}
-            <FieldError message={formErrors.tags} />
           </section>
         </div>
       </div>

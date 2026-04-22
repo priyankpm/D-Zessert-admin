@@ -1,4 +1,5 @@
 import api from './axios-instance';
+import { User } from './types';
 
 export interface SendOtpResponse {
   message: string;
@@ -7,11 +8,7 @@ export interface SendOtpResponse {
 export interface VerifyOtpResponse {
   accessToken: string;
   refreshToken: string;
-  user: {
-    id: string;
-    phone: string;
-    role: string;
-  };
+  user: User;
 }
 
 export const AuthService = {

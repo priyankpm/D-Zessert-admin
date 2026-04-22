@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CreationCard } from "@/components/admin/CreationCard";
+import { toast } from "@/lib/toast";
 import { 
   Package, 
   EyeOff, 
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
         const allData = await ProductService.findAll();
 
         // Filter out deleted products first
-        const nonDeleted = allData.filter((p) => !p.isDeleted);
+        const nonDeleted = allData?.filter((p) => !p.isDeleted);
 
         const active = nonDeleted.filter((p) => p.isActive).length;
         const deactivated = nonDeleted.filter((p) => !p.isActive).length;
@@ -40,8 +41,8 @@ export default function AdminDashboard() {
 
         // Take the 5 most recent active products
         setRecentProducts(nonDeleted.filter((p) => p.isActive).slice(0, 5));
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+      } catch {
+        toast.error("Failed to load dashboard data.");
       } finally {
         setLoading(false);
       }
@@ -166,13 +167,9 @@ export default function AdminDashboard() {
                   price={product.price}
                   description={product.description}
                   image={product.imageUrl}
-                  chefName={product.chefName}
+                  chefName={product.chef?.name}
                   stock={product.stock}
-                  tags={
-                    product.tags && product.tags.length > 0
-                      ? product.tags
-                      : ["CLASSIC", "TRENDING"]
-                  }
+                  tags={product.grade ? [product.grade] : ["CLASSIC"]}
                   onClick={(id) => router.push(`/admin/products/${id}`)}
                 />
               ))}
