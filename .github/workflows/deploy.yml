@@ -19,7 +19,7 @@ jobs:
           script: |
             set -e
 
-            cd /root/dzessert-admin
+            cd /root/D-Zessert-admin
 
             npm install
             npm run build
