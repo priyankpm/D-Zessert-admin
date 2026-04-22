@@ -24,5 +24,5 @@ jobs:
             npm install
             npm run build
 
-            pm2 restart dzessert-admin || PORT=3001 pm2 start npm --name dzessert-admin -- start
+            pm2 restart dzessert-admin || PORT=3000 pm2 start npm --name dzessert-admin -- start
             pm2 save
