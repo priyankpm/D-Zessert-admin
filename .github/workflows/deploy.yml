@@ -1,0 +1,28 @@
+name: Deploy Admin
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Admin via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: deploy
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            set -e
+
+            cd /root/dzessert-admin
+
+            npm install
+            npm run build
+
+            pm2 restart dzessert-admin || PORT=3001 pm2 start npm --name dzessert-admin -- start
+            pm2 save
