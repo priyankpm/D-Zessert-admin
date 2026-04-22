@@ -14,7 +14,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
-          username: deploy
+          username: root
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             set -e
