@@ -104,6 +104,15 @@ export function ToppingSelectDropdown({
   };
 
   useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      dropdownRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);

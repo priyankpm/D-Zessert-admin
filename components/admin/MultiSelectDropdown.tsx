@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   ChevronRight,
@@ -31,6 +31,7 @@ interface MultiSelectDropdownProps {
   selectedValues: string[];
   onChange: (vals: string[]) => void;
   error?: string;
+  required?: boolean;
   onAdd?: (name: string) => Promise<void>;
   onEdit?: (oldName: string, newName: string) => Promise<void>;
   onDelete?: (name: string) => Promise<void>;
@@ -42,6 +43,7 @@ export function MultiSelectDropdown({
   selectedValues,
   onChange,
   error,
+  required,
   onAdd,
   onEdit,
   onDelete,
@@ -52,6 +54,8 @@ export function MultiSelectDropdown({
   const [searchQuery, setSearchQuery] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const toggleOption = (option: string) => {
     const next = selectedValues.includes(option)
@@ -74,13 +78,35 @@ export function MultiSelectDropdown({
   };
 
   const filteredOptions = options.filter((opt) =>
-    opt.toLowerCase().includes(searchQuery.toLowerCase())
+    opt.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      dropdownRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div className="relative space-y-2">
+    <div className="relative space-y-2" ref={dropdownRef}>
       <label className="block text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 mb-2">
-        {label}
+        {label} {required && <span className="text-red-400">*</span>}
       </label>
 
       {/* Selected Items Wrap */}
@@ -137,7 +163,10 @@ export function MultiSelectDropdown({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setIsOpen(false)}
+          />
           <div className="absolute z-20 w-full mt-2 bg-white border border-stone-100 rounded-2xl shadow-2xl shadow-stone-900/10 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
             {/* Search Bar */}
             <div className="p-3 border-b border-stone-50 bg-stone-50/30 flex items-center gap-2">
@@ -150,96 +179,96 @@ export function MultiSelectDropdown({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            
+
             <div className="p-2 max-h-[280px] overflow-y-auto custom-scrollbar">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option, idx) => (
-                <div
-                  key={option}
-                  className={cn(
-                    "flex items-center gap-2 p-1 rounded-xl transition-colors group",
-                    selectedValues.includes(option)
-                      ? "bg-amber-50/50"
-                      : "hover:bg-stone-50",
-                  )}
-                >
-                  {editingIndex === idx ? (
-                    <div className="flex-1 flex gap-2 p-1 animate-in fade-in slide-in-from-left-2 duration-200">
-                      <input
-                        className="flex-1 bg-white border border-amber-300 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide outline-none focus:ring-2 focus:ring-amber-500/10 text-stone-800"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleEditSave(option);
-                          if (e.key === "Escape") setEditingIndex(null);
-                        }}
-                      />
-                      <button
-                        onClick={() => handleEditSave(option)}
-                        className="p-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-                      >
-                        <Save className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setEditingIndex(null)}
-                        className="p-2 bg-stone-100 text-stone-400 rounded-lg hover:bg-stone-200 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        onClick={() => toggleOption(option)}
-                        className="flex-1 flex items-center gap-3 p-2 cursor-pointer rounded-lg"
-                      >
-                        <div
-                          className={cn(
-                            "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                            selectedValues.includes(option)
-                              ? "bg-amber-600 border-amber-600 text-white"
-                              : "border-stone-200 group-hover:border-amber-400",
-                          )}
+                  <div
+                    key={option}
+                    className={cn(
+                      "flex items-center gap-2 p-1 rounded-xl transition-colors group",
+                      selectedValues.includes(option)
+                        ? "bg-amber-50/50"
+                        : "hover:bg-stone-50",
+                    )}
+                  >
+                    {editingIndex === idx ? (
+                      <div className="flex-1 flex gap-2 p-1 animate-in fade-in slide-in-from-left-2 duration-200">
+                        <input
+                          className="flex-1 bg-white border border-amber-300 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide outline-none focus:ring-2 focus:ring-amber-500/10 text-stone-800"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleEditSave(option);
+                            if (e.key === "Escape") setEditingIndex(null);
+                          }}
+                        />
+                        <button
+                          onClick={() => handleEditSave(option)}
+                          className="p-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                         >
-                          {selectedValues.includes(option) && (
-                            <CheckCircle2 className="w-2.5 h-2.5" />
+                          <Save className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => setEditingIndex(null)}
+                          className="p-2 bg-stone-100 text-stone-400 rounded-lg hover:bg-stone-200 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div
+                          onClick={() => toggleOption(option)}
+                          className="flex-1 flex items-center gap-3 p-2 cursor-pointer rounded-lg"
+                        >
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                              selectedValues.includes(option)
+                                ? "bg-amber-600 border-amber-600 text-white"
+                                : "border-stone-200 group-hover:border-amber-400",
+                            )}
+                          >
+                            {selectedValues.includes(option) && (
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                            )}
+                          </div>
+                          <span className="text-[11px] uppercase tracking-wide font-bold text-stone-700">
+                            {option}
+                          </span>
+                        </div>
+
+                        <div className="flex gap-1 pr-2">
+                          {onEdit && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingIndex(idx);
+                                setEditValue(option);
+                              }}
+                              className="p-2 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete ${option}?`))
+                                  onDelete(option);
+                              }}
+                              className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           )}
                         </div>
-                        <span className="text-[11px] uppercase tracking-wide font-bold text-stone-700">
-                          {option}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-1 pr-2">
-                        {onEdit && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingIndex(idx);
-                              setEditValue(option);
-                            }}
-                            className="p-2 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm(`Delete ${option}?`))
-                                onDelete(option);
-                            }}
-                            className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+                      </>
+                    )}
+                  </div>
                 ))
               ) : (
                 <div className="py-8 text-center">

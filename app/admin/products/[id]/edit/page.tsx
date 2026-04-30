@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ProductService, Product, ProductRecommendation } from "@/lib/api/product-service";
+import {
+  ProductService,
+  Product,
+  ProductRecommendation,
+} from "@/lib/api/product-service";
 import {
   Camera,
   Trash2,
@@ -22,6 +26,9 @@ import { ChefService, Chef } from "@/lib/api/chef-service";
 import { IngredientSelectDropdown } from "@/components/admin/IngredientSelectDropdown";
 import { ProductRecommendationDropdown } from "@/components/admin/ProductRecommendationDropdown";
 import { ToppingSelectDropdown } from "@/components/admin/ToppingSelectDropdown";
+import { MultiSelectDropdown } from "@/components/admin/MultiSelectDropdown";
+import { VibeService, Vibe } from "@/lib/api/vibe-service";
+import { VibeSelectDropdown } from "@/components/admin/VibeSelectDropdown";
 import { toast } from "@/lib/toast";
 
 // ── Inline error helper ──────────────────────────────────────────
@@ -51,8 +58,10 @@ export default function EditProductPage() {
     calories: "",
     chefId: "",
     stock: "",
+    moodType: [] as string[],
     ingredients: [] as string[],
     toppings: [] as string[],
+    vibes: [] as string[],
     recommendationIds: [] as string[],
   });
 
@@ -60,19 +69,22 @@ export default function EditProductPage() {
     Ingredient[]
   >([]);
   const [availableToppings, setAvailableToppings] = useState<Topping[]>([]);
+  const [availableVibes, setAvailableVibes] = useState<Vibe[]>([]);
   const [availableChefs, setAvailableChefs] = useState<Chef[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
 
   const fetchResources = useCallback(async () => {
     try {
-      const [ings, tops, chefs, prods] = await Promise.all([
+      const [ings, tops, vibes, chefs, prods] = await Promise.all([
         IngredientService.findAll(),
         ToppingService.findAll(),
+        VibeService.findAll(),
         ChefService.findAll(),
         ProductService.findAll(),
       ]);
       setAvailableIngredients(ings);
       setAvailableToppings(tops);
+      setAvailableVibes(vibes);
       setAvailableChefs(chefs);
       setAvailableProducts(prods);
     } catch {
@@ -112,11 +124,22 @@ export default function EditProductPage() {
             calories: product.calories?.toString() || "",
             chefId: product.chefId || "",
             stock: product.stock?.toString() || "",
+            moodType: product.moodType || [],
             ingredients:
-              product.ingredients?.map((i: Ingredient) => i.name) || [],
-            toppings: product.toppings?.map((t: Topping) => t.name) || [],
+              product.ingredients
+                ?.map((i: Ingredient) => i?.name)
+                .filter(Boolean) || [],
+            toppings:
+              product.toppings?.map((t: Topping) => t?.name).filter(Boolean) ||
+              [],
+            vibes:
+              product.vibes
+                ?.map((v: any) => v.name || v.vibe?.name)
+                .filter(Boolean) || [],
             recommendationIds:
-              product.recommendations?.map((r: ProductRecommendation) => r.recommendedId) || [],
+              product.recommendations?.map(
+                (r: ProductRecommendation) => r.recommendedId,
+              ) || [],
           });
           setImagePreview(product.imageUrl || null);
           if (product.gallery) {
@@ -248,6 +271,14 @@ export default function EditProductPage() {
       errors.ingredients = "Please select or add at least one ingredient.";
     }
 
+    if (formData.moodType.length === 0) {
+      errors.moodType = "Please select at least one mood for the product.";
+    }
+
+    if (formData.vibes.length === 0) {
+      errors.vibes = "Please select at least one vibe for the product.";
+    }
+
     return errors;
   };
 
@@ -289,6 +320,10 @@ export default function EditProductPage() {
         .map((name) => availableToppings.find((t) => t.name === name)?.id)
         .filter((id): id is string => id !== undefined);
 
+      const vibeIds = formData.vibes
+        .map((name) => availableVibes.find((v) => v.name === name)?.id)
+        .filter((id): id is string => id !== undefined);
+
       await ProductService.update(id as string, {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -298,9 +333,11 @@ export default function EditProductPage() {
         description: formData.description,
         calories: parseInt(formData.calories) || 0,
         stock: parseInt(formData.stock) || 0,
+        moodType: formData.moodType,
         chefId: formData.chefId,
         ingredientIds,
         toppingIds,
+        vibeIds,
         recommendations: formData.recommendationIds.map((id) => ({
           recommendedId: id,
         })),
@@ -730,6 +767,24 @@ export default function EditProductPage() {
               </h3>
             </div>
             <div className="space-y-6">
+              <MultiSelectDropdown
+                label="Mood Type"
+                required
+                options={[
+                  "Happy",
+                  "Sad",
+                  "Calm",
+                  "Romantic",
+                  "Stressed",
+                  "Angry",
+                ]}
+                selectedValues={formData.moodType}
+                onChange={(vals) =>
+                  setFormData((prev) => ({ ...prev, moodType: vals }))
+                }
+                error={formErrors.moodType}
+              />
+
               <IngredientSelectDropdown
                 label="Ingredients"
                 allIngredients={availableIngredients}
@@ -774,6 +829,17 @@ export default function EditProductPage() {
                     toast.error("Failed to delete ingredient.");
                   }
                 }}
+              />
+
+              <VibeSelectDropdown
+                label="Product Vibe"
+                required
+                allVibes={availableVibes}
+                selectedNames={formData.vibes}
+                onChange={(names) =>
+                  setFormData((prev) => ({ ...prev, vibes: names }))
+                }
+                error={formErrors.vibes}
               />
 
               <ToppingSelectDropdown

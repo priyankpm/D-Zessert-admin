@@ -4,6 +4,8 @@ export type { ApiResponse };
 import { Chef } from './chef-service';
 import { Ingredient } from './ingredient-service';
 import { Topping } from './topping-service';
+import { Vibe } from './vibe-service';
+
 
 /**
  * Product Data Interfaces
@@ -21,6 +23,7 @@ export interface Product {
   description?: string;
   imageUrl?: string;
   gallery: string[];
+  moodType: string[];
   chefsPick?: boolean;
   prepTime?: number;
   calories?: number;
@@ -40,6 +43,7 @@ export interface Product {
   chef?: Chef;
   ingredients?: Ingredient[];
   toppings?: Topping[];
+  vibes?: Vibe[];
   rating?: number;
   reviews?: number;
   recommendations?: ProductRecommendation[];
@@ -52,6 +56,7 @@ export interface CreateProductDto {
   description?: string;
   imageUrl?: string;
   gallery?: string[];
+  moodType?: string[];
   chefsPick?: boolean;
   prepTime?: number;
   calories?: number;
@@ -68,6 +73,7 @@ export interface CreateProductDto {
   chefId?: string;
   ingredientIds?: string[];
   toppingIds?: string[];
+  vibeIds?: string[];
   recommendations?: { recommendedId: string }[];
 }
 

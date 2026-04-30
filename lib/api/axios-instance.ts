@@ -7,7 +7,7 @@ import axios, {
 import { authStorage } from "../auth";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || " http://147.182.225.80/api";
+  process.env.NEXT_PUBLIC_API_URL || " http://localhost:3001/api";
 
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,

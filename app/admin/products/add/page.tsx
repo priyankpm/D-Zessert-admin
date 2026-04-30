@@ -18,6 +18,9 @@ import { ChefService, Chef } from "@/lib/api/chef-service";
 import { IngredientSelectDropdown } from "@/components/admin/IngredientSelectDropdown";
 import { ProductRecommendationDropdown } from "@/components/admin/ProductRecommendationDropdown";
 import { ToppingSelectDropdown } from "@/components/admin/ToppingSelectDropdown";
+import { MultiSelectDropdown } from "@/components/admin/MultiSelectDropdown";
+import { VibeService, Vibe } from "@/lib/api/vibe-service";
+import { VibeSelectDropdown } from "@/components/admin/VibeSelectDropdown";
 import { toast } from "@/lib/toast";
 
 // ── Inline error helper ──────────────────────────────────────────
@@ -45,8 +48,10 @@ export default function AddProductPage() {
     calories: "",
     chefId: "",
     stock: "",
+    moodType: [] as string[],
     ingredients: [] as string[],
     toppings: [] as string[],
+    vibes: [] as string[],
     recommendationIds: [] as string[],
   });
 
@@ -54,19 +59,22 @@ export default function AddProductPage() {
     Ingredient[]
   >([]);
   const [availableToppings, setAvailableToppings] = useState<Topping[]>([]);
+  const [availableVibes, setAvailableVibes] = useState<Vibe[]>([]);
   const [availableChefs, setAvailableChefs] = useState<Chef[]>([]);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
 
   const fetchResources = async () => {
     try {
-      const [ings, tops, chefs, prods] = await Promise.all([
+      const [ings, tops, vibes, chefs, prods] = await Promise.all([
         IngredientService.findAll(),
         ToppingService.findAll(),
+        VibeService.findAll(),
         ChefService.findAll(),
         ProductService.findAll(),
       ]);
       setAvailableIngredients(ings);
       setAvailableToppings(tops);
+      setAvailableVibes(vibes);
       setAvailableChefs(chefs);
       setAvailableProducts(prods);
     } catch {
@@ -194,6 +202,14 @@ export default function AddProductPage() {
       errors.ingredients = "Please select or add at least one ingredient.";
     }
 
+    if (formData.moodType.length === 0) {
+      errors.moodType = "Please select at least one mood for the product.";
+    }
+
+    if (formData.vibes.length === 0) {
+      errors.vibes = "Please select at least one vibe for the product.";
+    }
+
     return errors;
   };
 
@@ -227,6 +243,10 @@ export default function AddProductPage() {
         .map((name) => availableToppings.find((t) => t.name === name)?.id)
         .filter((id): id is string => id !== undefined);
 
+      const vibeIds = formData.vibes
+        .map((name) => availableVibes.find((v) => v.name === name)?.id)
+        .filter((id): id is string => id !== undefined);
+
       await ProductService.create({
         name: formData.name,
         price: parseFloat(formData.price),
@@ -236,9 +256,11 @@ export default function AddProductPage() {
         description: formData.description,
         calories: parseInt(formData.calories) || 0,
         stock: parseInt(formData.stock) || 0,
+        moodType: formData.moodType,
         chefId: formData.chefId,
         ingredientIds,
         toppingIds,
+        vibeIds,
         recommendations: formData.recommendationIds.map((id) => ({
           recommendedId: id,
         })),
@@ -663,6 +685,24 @@ export default function AddProductPage() {
               </h3>
             </div>
             <div className="space-y-6">
+              <MultiSelectDropdown
+                label="Mood Type"
+                required
+                options={[
+                  "Happy",
+                  "Sad",
+                  "Calm",
+                  "Romantic",
+                  "Stressed",
+                  "Angry",
+                ]}
+                selectedValues={formData.moodType}
+                onChange={(vals) =>
+                  setFormData((prev) => ({ ...prev, moodType: vals }))
+                }
+                error={formErrors.moodType}
+              />
+
               <IngredientSelectDropdown
                 label="Ingredients"
                 allIngredients={availableIngredients}
@@ -707,6 +747,17 @@ export default function AddProductPage() {
                     toast.error("Failed to delete ingredient.");
                   }
                 }}
+              />
+
+              <VibeSelectDropdown
+                label="Product Vibe"
+                required
+                allVibes={availableVibes}
+                selectedNames={formData.vibes}
+                onChange={(names) =>
+                  setFormData((prev) => ({ ...prev, vibes: names }))
+                }
+                error={formErrors.vibes}
               />
 
               <ToppingSelectDropdown
